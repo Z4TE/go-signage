@@ -27,9 +27,11 @@ func main() {
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	// gtfs.goから車両情報を取得
+	statusPtr := fetchStatus(apiURL)
+
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-
 		if r.URL.Query().Get("settings_saved") == "true" {
 			errorMessage = ""
 		}
@@ -39,6 +41,7 @@ func main() {
 		}{
 			ErrorMessage: errorMessage,
 		}
+
 		renderTemplate(w, "index", data)
 	})
 
@@ -57,10 +60,8 @@ func main() {
 
 	// 時刻表ページ
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "status", nil)
+		renderTemplate(w, "status", statusPtr)
 	})
-
-	fetchStatus(apiURL)
 
 	fmt.Printf("Listening on localhost:%s...\n", port)
 	err := http.ListenAndServe(":"+port, nil)

@@ -32,7 +32,7 @@ type ResponseData struct {
 	} `json:"entity"`
 }
 
-func fetchStatus(apiURL string) {
+func fetchStatus(apiURL string) *ResponseData {
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -64,19 +64,22 @@ func fetchStatus(apiURL string) {
 	prettyJSON, err := json.MarshalIndent(data, "", "  ")
 	if err != nil {
 		fmt.Println("JSON formatting error:", err)
-		return
 	}
 	fmt.Println(string(prettyJSON))
 
+	// デバッグ用
 	// fmt.Println("\n車両情報:")
-	for _, entity := range data.Entity {
-		if entity.Vehicle.ID != "" { // Vehicle が存在する場合のみ処理
-			fmt.Printf("  車両ID: %s, ラベル: %s\n", entity.Vehicle.ID, entity.Vehicle.Label)
-			fmt.Printf("  現在停留所シーケンス: %d\n", entity.Vehicle.CurrentStopSequence)
-			fmt.Printf("  位置情報 (緯度: %f, 経度: %f, 速度: %f)\n", entity.Vehicle.Position.Latitude, entity.Vehicle.Position.Longitude, entity.Vehicle.Position.Speed)
-			fmt.Printf("  停留所ID: %s, タイムスタンプ: %s\n", entity.Vehicle.StopID, entity.Vehicle.Timestamp)
-			fmt.Printf("  トリップ情報 (ルートID: %s, 開始日: %s, 開始時間: %s, トリップID: %s)\n",
-				entity.Vehicle.Trip.RouteID, entity.Vehicle.Trip.StartDate, entity.Vehicle.Trip.StartTime, entity.Vehicle.Trip.TripID)
+	/*
+		for _, entity := range data.Entity {
+			if entity.Vehicle.ID != "" { // Vehicle が存在する場合のみ処理
+				fmt.Printf("  車両ID: %s, ラベル: %s\n", entity.Vehicle.ID, entity.Vehicle.Label)
+				fmt.Printf("  現在停留所シーケンス: %d\n", entity.Vehicle.CurrentStopSequence)
+				fmt.Printf("  位置情報 (緯度: %f, 経度: %f, 速度: %f)\n", entity.Vehicle.Position.Latitude, entity.Vehicle.Position.Longitude, entity.Vehicle.Position.Speed)
+				fmt.Printf("  停留所ID: %s, タイムスタンプ: %s\n", entity.Vehicle.StopID, entity.Vehicle.Timestamp)
+				fmt.Printf("  トリップ情報 (ルートID: %s, 開始日: %s, 開始時間: %s, トリップID: %s)\n",
+					entity.Vehicle.Trip.RouteID, entity.Vehicle.Trip.StartDate, entity.Vehicle.Trip.StartTime, entity.Vehicle.Trip.TripID)
+			}
 		}
-	}
+	*/
+	return &data
 }

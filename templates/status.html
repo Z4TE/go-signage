@@ -30,30 +30,39 @@
     <table class="table table-striped fs-3">
         <thead>
           <tr>
-            <th scope="col">#</th>
-            <th scope="col">First</th>
-            <th scope="col">Last</th>
-            <th scope="col">Handle</th>
+            <th scope="col">車両ID</th>
+            <th scope="col">ラベル</th>
+            <th scope="col">現在停留所</th>
+            <th scope="col">緯度</th>
+            <th scope="col">経度</th>
+            <th scope="col">速度</th>
+            <th scope="col">停留所ID</th>
+            <th scope="col">タイムスタンプ</th>
+            <th scope="col">ルートID</th>
+            <th scope="col">開始日</th>
+            <th scope="col">開始時間</th>
+            <th scope="col">トリップID</th>
           </tr>
         </thead>
         <tbody class="table-group-divider">
+          {{ range .Entity }}
+          {{ if .Vehicle }}
           <tr>
-            <th scope="row">1</th>
-            <td>Mark</td>
-            <td>Otto</td>
-            <td>@mdo</td>
+              <td>{{ .Vehicle.ID }}</td>
+              <td>{{ .Vehicle.Label }}</td>
+              <td>{{ .Vehicle.CurrentStopSequence }}</td>
+              <td>{{ printf "%.6f" .Vehicle.Position.Latitude }}</td>
+              <td>{{ printf "%.6f" .Vehicle.Position.Longitude }}</td>
+              <td>{{ printf "%.2f" .Vehicle.Position.Speed }}</td>
+              <td>{{ .Vehicle.StopID }}</td>
+              <td>{{ .Vehicle.Timestamp }}</td>
+              <td>{{ .Vehicle.Trip.RouteID }}</td>
+              <td>{{ .Vehicle.Trip.StartDate }}</td>
+              <td>{{ .Vehicle.Trip.StartTime }}</td>
+              <td>{{ .Vehicle.Trip.TripID }}</td>
           </tr>
-          <tr>
-            <th scope="row">2</th>
-            <td>Jacob</td>
-            <td>Thornton</td>
-            <td>@fat</td>
-          </tr>
-          <tr>
-            <th scope="row">3</th>
-            <td colspan="2">Larry the Bird</td>
-            <td>@twitter</td>
-          </tr>
+          {{ end }}
+          {{ end }}
         </tbody>
       </table>
 
