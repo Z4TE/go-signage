@@ -8,12 +8,18 @@ import (
 func main() {
 
 	var port string = "8888"
+	var errorMessage string
 	path := "api_key.conf"
 
 	key, readErr := readConfig(path)
 	if readErr != nil {
-		fmt.Printf("API key is null or invalid: %v\n", readErr)
+		fmt.Printf("Failed to read API key: %v\n", readErr)
+		errorMessage = readErr.Error()
 		// key = "" // デフォルトのAPIキー、 api_key.confの内容が不正だった場合に使用
+	}
+
+	if key == "" {
+		errorMessage = "API key is empty."
 	}
 
 	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + key + "&agency_id=0704&output=json"
@@ -23,7 +29,17 @@ func main() {
 
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "index", nil)
+
+		if r.URL.Query().Get("settings_saved") == "true" {
+			errorMessage = ""
+		}
+
+		data := struct {
+			ErrorMessage string
+		}{
+			ErrorMessage: errorMessage,
+		}
+		renderTemplate(w, "index", data)
 	})
 
 	// テストページ

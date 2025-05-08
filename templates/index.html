@@ -10,4 +10,18 @@
         <p>Hit F11 to toggle fullscreen mode.</p>
     </div>
 
+    {{ if .ErrorMessage }}
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="card border-danger text-center mb-3 mx-auto">
+                <div class="card-body px-4">
+                    <h5 class="card-title text-danger">API key error</h5>
+                    <p class="card-text"> {{ .ErrorMessage }} </p>
+                    <a href="settings" class="btn btn-primary">Open settings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {{ end }}
+
 {{ end }}
