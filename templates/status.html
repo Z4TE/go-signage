@@ -1,0 +1,33 @@
+{{ define "title" }}index{{ end }}
+
+{{ define "content" }}
+
+    <script>
+        function showClock() {
+        let nowTime = new Date();
+        let nowHour = nowTime.getHours();
+        let nowMin  = nowTime.getMinutes();
+        let nowSec  = nowTime.getSeconds();
+
+        // 0埋め
+        if (nowHour < 10) {
+            nowHour = "0" + nowHour;
+        }
+        if (nowMin < 10) {
+            nowMin = "0" + nowMin;
+        }
+        if (nowSec < 10) {
+            nowSec = "0" + nowSec;
+        }
+
+        let msg = nowHour + ":" + nowMin + ":" + nowSec;
+        document.getElementById("realtime").innerHTML = msg;
+        }
+        setInterval('showClock()',1000);
+    </script>
+
+    <div class="text-center text-info">
+        <h1 id="realtime"></h1>
+    </div>
+
+{{ end }}

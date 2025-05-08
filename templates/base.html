@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <!-- Bootstrap読み込み (css) -->
+    <link href="../static/css/bootstrap.min.css" rel="stylesheet">
+    <!-- スタイルシート読み込み -->
+    <link href="../static/css/style.css" rel="stylesheet">
+
+    <!-- アイコン -->
+    <link rel="icon" href="../static/images/favicon.ico" id="favicon">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!--webフォント 重い場合にはコメントアウト-->
+    <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+JP&display=swap" rel="stylesheet">
+
+    <title>Digital signage</title>
+</head>
+
+<body class="ibm-plex-sans-jp-regular">
+    <!-- ヘッダ -->
+    <header>
+
+        <nav class="navbar navbar-expand-lg navbar-dark border-bottom bg-indigo-900">
+            <div class="container-fluid">
+              <a class="navbar-brand" href="/">Top</a>
+              <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+              </button>
+              <div class="collapse navbar-collapse" id="navbarSupportedContent">
+                <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                  <li class="nav-item">
+                    <a class="nav-link" href="/status">Status</a>
+                  </li>
+                  <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                      Menu
+                    </a>
+                    <ul class="dropdown-menu">
+                      <li><a class="dropdown-item" href="settings">Settings</a></li>
+                      <li><a class="dropdown-item" href="#">Database</a></li>
+                      <li><hr class="dropdown-divider"></li>
+                      <li><a class="dropdown-item" href="#">Something else here</a></li>
+                    </ul>
+                  </li>            
+
+                </ul>
+                <form class="d-flex" role="search">
+                  <input class="form-control me-2" type="search" placeholder="Search" aria-label="Search">
+                  <button class="btn btn-outline-success" type="submit">Search</button>
+                </form>
+              </div>
+            </div>
+          </nav>
+
+
+    </header>
+    
+
+    <!-- 内容 -->
+    <main>
+      <!--余白-->
+      <div style="height: 20px;"></div>
+
+      {{block "content" .}}{{end}}
+    </main>
+
+<!-- フッタ -->
+<footer class="bg-dark mt-5 p-2 text-secondary text-center fixed-bottom">
+  <div class="container">
+    <p class="mb-0">
+      <a href="#" id="navbarToggle" style="text-decoration: none; color: inherit;"
+      data-bs-toggle="tooltip" data-bs-placement="top" title="Toggle navbar visibility">
+        &copy; 2025 Yoshida seminar
+      </a>
+    </p>
+  </div>
+</footer>
+
+<!-- Bootstrap読み込み (js) -->
+<script src="../static/js/bootstrap.min.js"></script>
+<script src="../static/js/bootstrap.bundle.min.js"></script>
+
+<script>
+  const toggleLink = document.getElementById('navbarToggle');
+  const navbar = document.querySelector('nav.navbar'); // または id を使う場合：document.getElementById('main-navbar');
+
+  toggleLink.addEventListener('click', function (e) {
+    e.preventDefault(); // リンクのジャンプを無効化
+    navbar.style.display = (navbar.style.display === 'none') ? 'flex' : 'none';
+  });
+</script>
+
+</body>
+</html>
