@@ -16,7 +16,7 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 	apiKey := r.FormValue("keyInput") // HTMLのinput要素のname属性と一致させる
 
 	// ファイルに保存
-	filePath := "settings.conf"
+	filePath := "api_key.conf"
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0600) // 読み書き専用、存在しない場合は作成、存在する場合は内容をtruncate
 	if err != nil {
 		http.Error(w, "Failed to open file", http.StatusInternalServerError)
@@ -25,7 +25,7 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 	defer file.Close()
 
-	_, err = file.WriteString("key: " + apiKey + "\n")
+	_, err = file.WriteString(apiKey)
 	if err != nil {
 		http.Error(w, "Failed to write to file", http.StatusInternalServerError)
 		fmt.Println("Error writing to file:", err)
