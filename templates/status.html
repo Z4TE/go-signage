@@ -16,18 +16,45 @@
         if (nowMin < 10) {
             nowMin = "0" + nowMin;
         }
-        if (nowSec < 10) {
-            nowSec = "0" + nowSec;
-        }
 
-        let msg = nowHour + ":" + nowMin + ":" + nowSec;
+        let msg = nowHour + ":" + nowMin;
         document.getElementById("realtime").innerHTML = msg;
         }
         setInterval('showClock()',1000);
     </script>
 
-    <div class="text-center text-info">
-        <h1 id="realtime"></h1>
+    <div class="text-center text-info fw-bold fs-1">
+        <p id="realtime"></p>
     </div>
+
+    <table class="table table-striped fs-3">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">First</th>
+            <th scope="col">Last</th>
+            <th scope="col">Handle</th>
+          </tr>
+        </thead>
+        <tbody class="table-group-divider">
+          <tr>
+            <th scope="row">1</th>
+            <td>Mark</td>
+            <td>Otto</td>
+            <td>@mdo</td>
+          </tr>
+          <tr>
+            <th scope="row">2</th>
+            <td>Jacob</td>
+            <td>Thornton</td>
+            <td>@fat</td>
+          </tr>
+          <tr>
+            <th scope="row">3</th>
+            <td colspan="2">Larry the Bird</td>
+            <td>@twitter</td>
+          </tr>
+        </tbody>
+      </table>
 
 {{ end }}

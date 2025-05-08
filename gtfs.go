@@ -68,7 +68,7 @@ func fetchStatus(apiURL string) {
 	}
 	fmt.Println(string(prettyJSON))
 
-	fmt.Println("\n車両情報:")
+	// fmt.Println("\n車両情報:")
 	for _, entity := range data.Entity {
 		if entity.Vehicle.ID != "" { // Vehicle が存在する場合のみ処理
 			fmt.Printf("  車両ID: %s, ラベル: %s\n", entity.Vehicle.ID, entity.Vehicle.Label)

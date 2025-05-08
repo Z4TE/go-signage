@@ -13,7 +13,7 @@ func main() {
 	key, readErr := readConfig(path)
 	if readErr != nil {
 		fmt.Printf("API key is null or invalid: %v\n", readErr)
-		key = "kL2lHmRCAndY526aSN2dx2O2fgs2" // デフォルトのAPIキー、 api_key.confの内容が不正だった場合に使用
+		// key = "" // デフォルトのAPIキー、 api_key.confの内容が不正だった場合に使用
 	}
 
 	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + key + "&agency_id=0704&output=json"
