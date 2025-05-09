@@ -23,19 +23,25 @@
         setInterval('showClock()',1000);
     </script>
 
+    <style>
+      .table-fixed {
+        table-layout: fixed;
+        width: 100%;
+      }
+    </style>
+
     <div class="text-center text-info fw-bold fs-1 my-1">
         <p id="realtime" style="font-size: 2em;"></p>
     </div>
 
     <hr>
 
-    <table class="table table-striped fs-3">
+    <table class="table table-striped fs-3 table-fixed">
         <thead>
           <tr>
-            <th scope="col">路線名</th>
-            <th scope="col">現在停留所</th>
-            <th scope="col">次の停留所</th>
-            <th scope="col">到着時刻</th>
+            <th class="text-center" scope="col">路線名</th>
+            <th class="text-center" scope="col">次の停留所</th>
+            <th class="text-center" scope="col">到着時刻</th>
           </tr>
         </thead>
         <tbody class="table-group-divider">
@@ -43,7 +49,6 @@
           {{ if .Vehicle }}
           <tr>
             <td>{{ .Vehicle.RouteID }}</td>
-            <td>{{ .Vehicle.CurrentStopSequence }}</td>
             <td>{{ .Vehicle.NextStopID }}</td>
             <td>{{ .Vehicle.NextStopTime }}</td>
           </tr>
