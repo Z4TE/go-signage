@@ -72,7 +72,7 @@ func extract(src, dest string) error {
 
 	destDir := filepath.Join(dest, dir)
 	// ファイル名のディレクトリを作成する
-	if err := os.MkdirAll(destDir, os.ModeDir); err != nil {
+	if err := os.MkdirAll(destDir, 0600); err != nil {
 		return err
 	}
 
