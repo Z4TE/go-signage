@@ -62,6 +62,10 @@ func main() {
 		renderTemplate(w, "status", statusPtr)
 	})
 
+	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, "help", nil)
+	})
+
 	fmt.Printf("Listening on localhost:%s...\n", port)
 	err := http.ListenAndServe(":"+port, nil)
 	if err != nil {
