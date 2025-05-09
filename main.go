@@ -62,9 +62,13 @@ func main() {
 		renderTemplate(w, "status", statusPtr)
 	})
 
+	// ヘルプページ
 	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
 		renderTemplate(w, "help", nil)
 	})
+
+	// ダウンローダ
+	http.HandleFunc("/dl", downloadHandler)
 
 	fmt.Printf("Listening on localhost:%s...\n", port)
 	err := http.ListenAndServe(":"+port, nil)

@@ -1,3 +1,4 @@
 api_key.conf
 settings.conf
 go-signage*
+static/gtfs/*.txt
