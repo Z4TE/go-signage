@@ -5,25 +5,21 @@ import (
 	"net/http"
 )
 
+const configPath string = "settings.conf"
+
 func main() {
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
-	path := "api_key.conf"
 
-	key, readErr := readConfig(path)
-	if readErr != nil {
-		fmt.Printf("Failed to read API key: %v\n", readErr)
-		errorMessage = readErr.Error()
-		// key = "" // デフォルトのAPIキー、 api_key.confの内容が不正だった場合に使用
-	}
+	config := readConfig(configPath)
 
-	if key == "" {
+	if config.uid == "" {
 		errorMessage = "API key is empty."
 		errorTitle = "API key error"
 	}
 
-	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + key + "&agency_id=0704&output=json"
+	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + config.uid + "&agency_id=" + config.agency_id + "&output=json"
 
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))

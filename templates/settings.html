@@ -5,14 +5,23 @@
     <div class="text-center">
         <h1>Settings</h1>
     </div>
-    
+
     <form class="px-4" action="/save_settings" method="post">
-        <div class="mb-3">
-          <label for="keyInput" class="form-label">API key</label>
-          <input type="text" class="form-control" id="exampleInputEmail1" name="keyInput" aria-describedby="emailHelp">
-          <div id="emailHelp" class="form-text">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
+      <div class="form-row">
+        <div class="row">
+          <div class="col mb-3">
+              <label for="keyInput" class="form-label">API key</label>
+              <input type="text" class="form-control" name="uidInput">
+          </div>
+
+          <div class="col mb-3">
+              <label for="keyInput" class="form-label">Agency ID</label>
+              <input type="text" class="form-control" name="agencyIdInput">
+          </div>
         </div>
+        <div class="form-text mb-3">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
         <button type="submit" class="btn btn-primary">Submit</button>
+      </div>
     </form>
 
     <hr>
