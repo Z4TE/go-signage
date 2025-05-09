@@ -3,9 +3,13 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"time"
 )
 
 const configPath string = "settings.conf"
+const refreshInterval = 2 * time.Minute
+
+var latestStatus *TimeTable
 
 func main() {
 
@@ -24,9 +28,18 @@ func main() {
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
+	// 定期的に車両情報を取得して更新する
+	go func() {
+		for range time.Tick(refreshInterval) {
+			data := fetchStatus(apiURL)
+			latestStatus = populateTimeTable(data)
+			fmt.Println("Time table has been updated:", time.Now().Format(time.RFC3339))
+		}
+	}()
+
 	// gtfs.goから車両情報を取得
 	data := fetchStatus(apiURL)
-	statusPtr := populateTimeTable(data)
+	latestStatus := populateTimeTable(data)
 
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -60,7 +73,7 @@ func main() {
 
 	// 時刻表ページ
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "status", statusPtr)
+		renderTemplate(w, "status", latestStatus)
 	})
 
 	// ヘルプページ
