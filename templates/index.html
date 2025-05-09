@@ -13,11 +13,13 @@
     {{ if .ErrorMessage }}
     <div class="container">
         <div class="row justify-content-center">
-            <div class="card border-danger text-center mb-3 mx-auto">
+            <div class="card border-warning text-center mb-3 mx-auto">
                 <div class="card-body px-4">
-                    <h5 class="card-title text-danger">API key error</h5>
+                    <h5 class="card-title text-warning"> {{ .ErrorTitle }} </h5>
                     <p class="card-text"> {{ .ErrorMessage }} </p>
+                    {{ if eq .ErrorTitle "API key error"}}
                     <a href="settings" class="btn btn-primary">Open settings</a>
+                    {{ end }}
                 </div>
             </div>
         </div>

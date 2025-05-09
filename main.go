@@ -8,7 +8,7 @@ import (
 func main() {
 
 	var port string = "8888"
-	var errorMessage string
+	var errorMessage, errorTitle string
 	path := "api_key.conf"
 
 	key, readErr := readConfig(path)
@@ -20,6 +20,7 @@ func main() {
 
 	if key == "" {
 		errorMessage = "API key is empty."
+		errorTitle = "API key error"
 	}
 
 	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + key + "&agency_id=0704&output=json"
@@ -33,13 +34,15 @@ func main() {
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Query().Get("settings_saved") == "true" {
-			errorMessage = ""
+			errorMessage = "Please restart the server to apply the new settings."
+			errorTitle = "Restart required"
 		}
 
 		data := struct {
-			ErrorMessage string
+			ErrorMessage, ErrorTitle string
 		}{
 			ErrorMessage: errorMessage,
+			ErrorTitle:   errorTitle,
 		}
 
 		renderTemplate(w, "index", data)
