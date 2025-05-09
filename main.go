@@ -25,7 +25,8 @@ func main() {
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// gtfs.goから車両情報を取得
-	statusPtr := fetchStatus(apiURL)
+	data := fetchStatus(apiURL)
+	statusPtr := populateTimeTable(data)
 
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {

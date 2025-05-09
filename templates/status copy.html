@@ -1,0 +1,71 @@
+{{ define "title" }}index{{ end }}
+
+{{ define "content" }}
+
+    <script>
+        function showClock() {
+        let nowTime = new Date();
+        let nowHour = nowTime.getHours();
+        let nowMin  = nowTime.getMinutes();
+        let nowSec  = nowTime.getSeconds();
+
+        // 0埋め
+        if (nowHour < 10) {
+            nowHour = "0" + nowHour;
+        }
+        if (nowMin < 10) {
+            nowMin = "0" + nowMin;
+        }
+
+        let msg = nowHour + ":" + nowMin;
+        document.getElementById("realtime").innerHTML = msg;
+        }
+        setInterval('showClock()',1000);
+    </script>
+
+    <div class="text-center text-info fw-bold fs-1 my-1">
+        <p id="realtime" style="font-size: 2em;"></p>
+    </div>
+
+    <hr>
+
+    <table class="table table-striped fs-3">
+        <thead>
+          <tr>
+            <th scope="col">車両ID</th>
+            <th scope="col">ラベル</th>
+            <th scope="col">現在停留所</th>
+            <th scope="col">緯度</th>
+            <th scope="col">経度</th>
+            <th scope="col">速度</th>
+            <th scope="col">停留所ID</th>
+            <th scope="col">タイムスタンプ</th>
+            <th scope="col">ルートID</th>
+            <th scope="col">開始日</th>
+            <th scope="col">開始時間</th>
+            <th scope="col">トリップID</th>
+          </tr>
+        </thead>
+        <tbody class="table-group-divider">
+          {{ range .Entity }}
+          {{ if .Vehicle }}
+          <tr>
+              <td>{{ .Vehicle.ID }}</td>
+              <td>{{ .Vehicle.Label }}</td>
+              <td>{{ .Vehicle.CurrentStopSequence }}</td>
+              <td>{{ printf "%.6f" .Vehicle.Position.Latitude }}</td>
+              <td>{{ printf "%.6f" .Vehicle.Position.Longitude }}</td>
+              <td>{{ printf "%.2f" .Vehicle.Position.Speed }}</td>
+              <td>{{ .Vehicle.StopID }}</td>
+              <td>{{ .Vehicle.Timestamp }}</td>
+              <td>{{ .Vehicle.Trip.RouteID }}</td>
+              <td>{{ .Vehicle.Trip.StartDate }}</td>
+              <td>{{ .Vehicle.Trip.StartTime }}</td>
+              <td>{{ .Vehicle.Trip.TripID }}</td>
+          </tr>
+          {{ end }}
+          {{ end }}
+        </tbody>
+      </table>
+
+{{ end }}

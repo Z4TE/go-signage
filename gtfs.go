@@ -11,7 +11,7 @@ import (
 type ResponseData struct {
 	Entity []struct {
 		ID      string `json:"id"`
-		Vehicle struct {
+		Vehicle *struct {
 			CurrentStopSequence int64 `json:"currentStopSequence"`
 			Position            struct {
 				Latitude  float64 `json:"latitude"`
@@ -30,6 +30,18 @@ type ResponseData struct {
 			Label string `json:"label"`
 		} `json:"vehicle,omitempty"` // omitempty を追加して、vehicle がない場合もエラーにならないように
 	} `json:"entity"`
+}
+
+// 時刻表に掲載する情報の構造体
+type TimeTable struct {
+	Entity []struct {
+		Vehicle struct {
+			RouteID             string `json:"routeId"`
+			CurrentStopSequence string `json:"currentStopSequence"`
+			NextStopID          string `json:"nextStopId"`
+			NextStopTime        string `json:"nextStopTime"`
+		}
+	}
 }
 
 func fetchStatus(apiURL string) *ResponseData {
@@ -60,26 +72,5 @@ func fetchStatus(apiURL string) *ResponseData {
 		os.Exit(1)
 	}
 
-	fmt.Println("Fetched JSON data:")
-	prettyJSON, err := json.MarshalIndent(data, "", "  ")
-	if err != nil {
-		fmt.Println("JSON formatting error:", err)
-	}
-	fmt.Println(string(prettyJSON))
-
-	// デバッグ用
-	// fmt.Println("\n車両情報:")
-	/*
-		for _, entity := range data.Entity {
-			if entity.Vehicle.ID != "" { // Vehicle が存在する場合のみ処理
-				fmt.Printf("  車両ID: %s, ラベル: %s\n", entity.Vehicle.ID, entity.Vehicle.Label)
-				fmt.Printf("  現在停留所シーケンス: %d\n", entity.Vehicle.CurrentStopSequence)
-				fmt.Printf("  位置情報 (緯度: %f, 経度: %f, 速度: %f)\n", entity.Vehicle.Position.Latitude, entity.Vehicle.Position.Longitude, entity.Vehicle.Position.Speed)
-				fmt.Printf("  停留所ID: %s, タイムスタンプ: %s\n", entity.Vehicle.StopID, entity.Vehicle.Timestamp)
-				fmt.Printf("  トリップ情報 (ルートID: %s, 開始日: %s, 開始時間: %s, トリップID: %s)\n",
-					entity.Vehicle.Trip.RouteID, entity.Vehicle.Trip.StartDate, entity.Vehicle.Trip.StartTime, entity.Vehicle.Trip.TripID)
-			}
-		}
-	*/
 	return &data
 }
