@@ -20,6 +20,7 @@ func main() {
 
 	filename := filepath.Join("./databases", dbFile) // 相対パスを構築
 
+	// DBが存在しなければ初期化
 	if _, err := os.Stat(filename); os.IsNotExist(err) {
 		initStaticDb(dbFile)
 	} else if err == nil {
@@ -27,6 +28,9 @@ func main() {
 	} else {
 		fmt.Println("ファイルの状態を確認中にエラーが発生しました:", err)
 	}
+
+	// DB検索 (デバッグ用)
+	searchDb(dbFile)
 
 	config := readConfig(configPath)
 

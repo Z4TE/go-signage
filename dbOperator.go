@@ -319,6 +319,81 @@ func processStopTimesFile(db *sql.DB, filename string) error {
 	return nil
 }
 
+// routesテーブルを検索し、結果をRouteのスライスで返す
+func searchRoutes(db *sql.DB, whereClause string, args ...interface{}) ([]Route, error) {
+	query := fmt.Sprintf("SELECT route_id, agency_id, route_short_name, route_long_name, route_desc, route_type, route_url, route_color, route_text_color, jp_parent_route_id FROM routes WHERE %s", whereClause)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("routesテーブルの検索に失敗: %w", err)
+	}
+	defer rows.Close()
+
+	var routes []Route
+	for rows.Next() {
+		var r Route
+		if err := rows.Scan(&r.RouteID, &r.AgencyID, &r.RouteShortName, &r.RouteLongName, &r.RouteDesc, &r.RouteType, &r.RouteURL, &r.RouteColor, &r.RouteTextColor, &r.JpParentRouteID); err != nil {
+			return nil, fmt.Errorf("routesテーブルの行のスキャンに失敗: %w", err)
+		}
+		routes = append(routes, r)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("routesテーブルの検索結果の処理中にエラーが発生: %w", err)
+	}
+
+	return routes, nil
+}
+
+// stopsテーブルを検索し、結果をStopのスライスで返す
+func searchStops(db *sql.DB, whereClause string, args ...interface{}) ([]Stop, error) {
+	query := fmt.Sprintf("SELECT stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, zone_id, stop_url, location_type, parent_station, stop_timezone, wheelchair_boarding FROM stops WHERE %s", whereClause)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("stopsテーブルの検索に失敗: %w", err)
+	}
+	defer rows.Close()
+
+	var stops []Stop
+	for rows.Next() {
+		var s Stop
+		if err := rows.Scan(&s.StopID, &s.StopCode, &s.StopName, &s.StopDesc, &s.StopLat, &s.StopLon, &s.ZoneID, &s.StopURL, &s.LocationType, &s.ParentStation, &s.StopTimezone, &s.WheelchairBoarding); err != nil {
+			return nil, fmt.Errorf("stopsテーブルの行のスキャンに失敗: %w", err)
+		}
+		stops = append(stops, s)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("stopsテーブルの検索結果の処理中にエラーが発生: %w", err)
+	}
+
+	return stops, nil
+}
+
+// stopsテーブルを検索し、結果をStopのスライスで返す
+func searchStopTimes(db *sql.DB, whereClause string, args ...interface{}) ([]StopTime, error) {
+	query := fmt.Sprintf("SELECT trip_id, arrival_time, departure_time, stop_id, stop_sequence, stop_headsign, pickup_type, drop_off_type, shape_dist_traveled, timepoint FROM stop_times WHERE %s", whereClause)
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("stop_timesテーブルの検索に失敗: %w", err)
+	}
+	defer rows.Close()
+
+	var stopTimes []StopTime
+	for rows.Next() {
+		var st StopTime
+		if err := rows.Scan(&st.TripID, &st.ArrivalTime, &st.DepartureTime, &st.StopID, &st.StopSequence, &st.StopHeadsign, &st.PickupType, &st.DropOffType, &st.ShapeDistTraveled, &st.Timepoint); err != nil {
+			return nil, fmt.Errorf("stop_timesテーブルの行のスキャンに失敗: %w", err)
+		}
+		stopTimes = append(stopTimes, st)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("stop_timesテーブルの検索結果の処理中にエラーが発生: %w", err)
+	}
+
+	return stopTimes, nil
+}
+
 // 文字列をintに安全に変換するヘルパー関数
 func atoi(s string) int {
 	i := 0
@@ -328,6 +403,45 @@ func atoi(s string) int {
 		return 0
 	}
 	return i
+}
+
+func searchDb(dbFile string) {
+	// DB検索
+	db, err := setupDb(dbFile)
+	if err != nil {
+		log.Fatalf("データベース接続に失敗: %v", err)
+	}
+	defer db.Close()
+
+	// routesテーブルの検索例
+	fmt.Println("\nroutesテーブルの検索例:")
+	routes, err := searchRoutes(db, "route_type = ?", 3)
+	if err != nil {
+		log.Fatalf("routesテーブルの検索エラー: %v", err)
+	}
+	for _, route := range routes {
+		fmt.Printf("Route ID: %s, Long Name: %s\n", route.RouteID, route.RouteLongName)
+	}
+
+	// stopsテーブルの検索例
+	fmt.Println("\nstop_timesテーブルの検索例:")
+	stops, err := searchStops(db, "stop_name LIKE ?", "%福島%")
+	if err != nil {
+		log.Fatalf("stopsテーブルの検索エラー: %v", err)
+	}
+	for _, stop := range stops {
+		fmt.Printf("Stop ID: %s, Name: %s, Latitude: %f, Longitude: %f\n", stop.StopID, stop.StopName, stop.StopLat, stop.StopLon)
+	}
+
+	// stop_timesテーブルの検索例
+	fmt.Println("\nstop_timesテーブルの検索例:")
+	stopTimes, err := searchStopTimes(db, "stop_sequence = ?", "1")
+	if err != nil {
+		log.Fatalf("stop_timesテーブルの検索エラー: %v", err)
+	}
+	for _, stopTime := range stopTimes {
+		fmt.Printf("Stop Sequence: %d, Stop ID: %s, Deaprture Time: %s\n", stopTime.StopSequence, stopTime.StopID, stopTime.DepartureTime)
+	}
 }
 
 func initStaticDb(dbFile string) {
