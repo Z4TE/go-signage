@@ -69,6 +69,31 @@ func setupDb(dbFile string) (*sql.DB, error) {
 	return db, nil
 }
 
+// vehicle_posテーブルを作成
+func createVehiclePosTable(db *sql.DB) error {
+	_, err := db.Exec(`
+		CREATE TABLE IF NOT EXISTS vehicle_pos (
+			id TEXT PRIMARY KEY,
+			route_id TEXT,
+			start_date TEXT,
+			start_time TEXT,
+			trip_id TEXT,
+			current_stop_sequence INTEGER,
+			latitude REAL,
+			longitude REAL,
+			speed REAL,
+			stop_id TEXT,
+			timestamp TEXT,
+			label TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("vehicle_posテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("vehicle_posテーブルを作成または確認しました。")
+	return nil
+}
+
 // routesテーブルを作成
 func createRoutesTable(db *sql.DB) error {
 	_, err := db.Exec(`
@@ -92,7 +117,7 @@ func createRoutesTable(db *sql.DB) error {
 	return nil
 }
 
-// stopsテーブルを作成する関数
+// stopsテーブルを作成
 func createStopsTable(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS stops (
@@ -117,7 +142,7 @@ func createStopsTable(db *sql.DB) error {
 	return nil
 }
 
-// stop_timesテーブルを作成する関数
+// stop_timesテーブルを作成
 func createStopTimesTable(db *sql.DB) error {
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS stop_times (
@@ -137,6 +162,64 @@ func createStopTimesTable(db *sql.DB) error {
 		return fmt.Errorf("stop_timesテーブル作成に失敗: %w", err)
 	}
 	fmt.Println("stops_timesテーブルを作成または確認しました。")
+	return nil
+}
+
+// vehiclePos構造体のデータをvehicle_posテーブルに挿入
+func insertVehiclePos(tx *sql.Tx, entity *struct {
+	ID      string `json:"id"`
+	Vehicle *struct {
+		CurrentStopSequence int64 `json:"currentStopSequence"`
+		Position            struct {
+			Latitude  float64 `json:"latitude"`
+			Longitude float64 `json:"longitude"`
+			Speed     float64 `json:"speed"`
+		} `json:"position"`
+		StopID    string `json:"stopId"`
+		Timestamp string `json:"timestamp"`
+		Trip      struct {
+			RouteID   string `json:"routeId"`
+			StartDate string `json:"startDate"`
+			StartTime string `json:"startTime"`
+			TripID    string `json:"tripId"`
+		} `json:"trip"`
+		ID    string `json:"id"`
+		Label string `json:"label"`
+	} `json:"vehicle,omitempty"`
+}) error {
+	if entity.Vehicle == nil {
+		return nil // Vehicle 情報がない場合はスキップ
+	}
+
+	stmt, err := tx.Prepare(`
+		INSERT OR REPLACE INTO vehicle_pos (
+			id, route_id, start_date, start_time, trip_id,
+			current_stop_sequence, latitude, longitude, speed,
+			stop_id, timestamp, label
+		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`)
+	if err != nil {
+		return fmt.Errorf("failed to prepare statement: %w", err)
+	}
+	defer stmt.Close()
+
+	_, err = stmt.Exec(
+		entity.Vehicle.ID,
+		entity.Vehicle.Trip.RouteID,
+		entity.Vehicle.Trip.StartDate,
+		entity.Vehicle.Trip.StartTime,
+		entity.Vehicle.Trip.TripID,
+		entity.Vehicle.CurrentStopSequence,
+		entity.Vehicle.Position.Latitude,
+		entity.Vehicle.Position.Longitude,
+		entity.Vehicle.Position.Speed,
+		entity.Vehicle.StopID,
+		entity.Vehicle.Timestamp,
+		entity.Vehicle.Label,
+	)
+	if err != nil {
+		return fmt.Errorf("failed to execute statement for vehicle ID %s: %w", entity.Vehicle.ID, err)
+	}
 	return nil
 }
 
@@ -493,4 +576,41 @@ func initStaticDb(dbFile string) {
 		log.Fatalf("stop_timesファイルの処理に失敗: %v", err)
 	}
 	fmt.Println("stop_timesデータの登録が完了しました。")
+}
+
+func testDynamicDb(dbFile string, data ResponseData) {
+
+	db, err := setupDb(dbFile)
+	if err != nil {
+		log.Fatalf("データベース接続に失敗: %v", err)
+	}
+	defer db.Close()
+
+	err = createVehiclePosTable(db)
+	if err != nil {
+		log.Fatalf("routesテーブルの作成に失敗: %v", err)
+	}
+
+	tx, err := db.Begin()
+	if err != nil {
+		fmt.Println("Failed to begin transaction:", err)
+		return
+	}
+	defer tx.Rollback() // エラーが発生した場合にロールバック
+
+	// 取得した各 Entity を挿入
+	for _, entity := range data.Entity {
+		err := insertVehiclePos(tx, &entity) // Entity へのポインタを渡す
+		if err != nil {
+			fmt.Println("Error inserting/updating vehicle:", err)
+			return // エラーが発生したら処理を中断 (必要に応じて継続することも可能)
+		}
+	}
+
+	// トランザクションのコミット
+	err = tx.Commit()
+	if err != nil {
+		fmt.Println("Failed to commit transaction:", err)
+		return
+	}
 }

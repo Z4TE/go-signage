@@ -41,11 +41,13 @@ func main() {
 
 	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + config.uid + "&agency_id=" + config.agency_id + "&output=json"
 
-	// Bootstrap読み込み
-	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
-
 	// gtfs.goから車両情報を取得
 	data := fetchStatus(apiURL)
+
+	testDynamicDb("test.sql", *data)
+
+	// Bootstrap読み込み
+	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
