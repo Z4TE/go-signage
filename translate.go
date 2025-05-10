@@ -132,9 +132,6 @@ func populateTimeTable(responseData *ResponseData) *TimeTable {
 				routeName = ""
 			}
 
-			// デバッグ用
-			fmt.Printf("%s,%s,%s,%s\n", routeName, stopName, nextStopName, nextStopTime)
-
 			timeTable.Entity = append(timeTable.Entity, struct {
 				Vehicle struct {
 					RouteID             string `json:"routeId"`

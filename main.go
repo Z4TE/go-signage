@@ -3,18 +3,30 @@ package main
 import (
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
 const configPath string = "settings.conf"
 const refreshInterval = 2 * time.Minute
 
-var latestStatus *TimeTable
-
 func main() {
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
+
+	var dbFile string = "static.sql"
+
+	filename := filepath.Join("./databases", dbFile) // 相対パスを構築
+
+	if _, err := os.Stat(filename); os.IsNotExist(err) {
+		initStaticDb(dbFile)
+	} else if err == nil {
+		fmt.Println(filename, "は存在します。")
+	} else {
+		fmt.Println("ファイルの状態を確認中にエラーが発生しました:", err)
+	}
 
 	config := readConfig(configPath)
 
@@ -28,18 +40,8 @@ func main() {
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	// 定期的に車両情報を取得して更新する
-	go func() {
-		for range time.Tick(refreshInterval) {
-			data := fetchStatus(apiURL)
-			latestStatus = populateTimeTable(data)
-			fmt.Println("Time table has been updated:", time.Now().Format(time.RFC3339))
-		}
-	}()
-
 	// gtfs.goから車両情報を取得
 	data := fetchStatus(apiURL)
-	latestStatus := populateTimeTable(data)
 
 	// トップページ
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
@@ -73,7 +75,7 @@ func main() {
 
 	// 時刻表ページ
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "status", latestStatus)
+		renderTemplate(w, "status", data)
 	})
 
 	// ヘルプページ
