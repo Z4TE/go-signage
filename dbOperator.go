@@ -204,7 +204,7 @@ func insertVehiclePos(tx *sql.Tx, entity *struct {
 	defer stmt.Close()
 
 	_, err = stmt.Exec(
-		entity.Vehicle.ID,
+		entity.ID,
 		entity.Vehicle.Trip.RouteID,
 		entity.Vehicle.Trip.StartDate,
 		entity.Vehicle.Trip.StartTime,
@@ -218,7 +218,7 @@ func insertVehiclePos(tx *sql.Tx, entity *struct {
 		entity.Vehicle.Label,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to execute statement for vehicle ID %s: %w", entity.Vehicle.ID, err)
+		return fmt.Errorf("failed to execute statement for vehicle ID %s: %w", entity.ID, err)
 	}
 	return nil
 }
@@ -601,6 +601,10 @@ func testDynamicDb(dbFile string, data ResponseData) {
 	// 取得した各 Entity を挿入
 	for _, entity := range data.Entity {
 		err := insertVehiclePos(tx, &entity) // Entity へのポインタを渡す
+
+		// デバッグ用
+		//fmt.Println(entity.ID)
+
 		if err != nil {
 			fmt.Println("Error inserting/updating vehicle:", err)
 			return // エラーが発生したら処理を中断 (必要に応じて継続することも可能)

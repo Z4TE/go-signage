@@ -30,7 +30,7 @@ func main() {
 	}
 
 	// DB検索 (デバッグ用)
-	searchDb(dbFile)
+	//searchDb(dbFile)
 
 	config := readConfig(configPath)
 
@@ -44,7 +44,8 @@ func main() {
 	// gtfs.goから車両情報を取得
 	data := fetchStatus(apiURL)
 
-	testDynamicDb("test.sql", *data)
+	testDynamicDb("dynamic.sql", *data)
+	getStopNameByStopSeq("dynamic.sql", "static.sql", 1)
 
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
