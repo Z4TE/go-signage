@@ -69,29 +69,256 @@ func setupDb(dbFile string) (*sql.DB, error) {
 	return db, nil
 }
 
-// vehicle_posテーブルを作成
-func createVehiclePosTable(db *sql.DB) error {
+// 動的情報用のテーブルたちを作成
+func createTablesOnDynamicDb(db *sql.DB) error {
+	// response_header テーブル作成
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS vehicle_pos (
-			id TEXT PRIMARY KEY,
-			route_id TEXT,
-			start_date TEXT,
-			start_time TEXT,
-			trip_id TEXT,
+		CREATE TABLE IF NOT EXISTS response_header (
+			timestamp TEXT NOT NULL,
+			gtfs_realtime_version TEXT,
+			incrementality TEXT,
+			response_type TEXT NOT NULL CHECK (response_type IN ('trip_update', 'vehicle_position')),
+			PRIMARY KEY (timestamp, response_type)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("response_headerテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("response_headerテーブルを作成または確認しました。")
+
+	// entity テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS entity (
+			id TEXT PRIMARY KEY NOT NULL,
+			response_timestamp TEXT NOT NULL,
+			response_type TEXT NOT NULL,
+			FOREIGN KEY (response_timestamp, response_type) REFERENCES response_header(timestamp, response_type)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("entityテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("entityテーブルを作成または確認しました。")
+
+	// trip テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS trip (
+			trip_id TEXT PRIMARY KEY NOT NULL,
+			route_id TEXT NOT NULL,
+			start_date TEXT NOT NULL,
+			start_time TEXT NOT NULL
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("tripテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("tripテーブルを作成または確認しました。")
+
+	// vehicle テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS vehicle (
+			id TEXT PRIMARY KEY NOT NULL,
+			label TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("vehicleテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("vehicleテーブルを作成または確認しました。")
+
+	// trip_update テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS trip_update (
+			entity_id TEXT NOT NULL,
+			trip_id TEXT NOT NULL,
+			vehicle_id TEXT,
+			FOREIGN KEY (entity_id) REFERENCES entity(id),
+			FOREIGN KEY (trip_id) REFERENCES trip(trip_id),
+			FOREIGN KEY (vehicle_id) REFERENCES vehicle(id),
+			PRIMARY KEY (entity_id)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("trip_updateテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("trip_updateテーブルを作成または確認しました。")
+
+	// stop_time_update テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS stop_time_update (
+			trip_update_entity_id TEXT NOT NULL,
+			stop_sequence INTEGER NOT NULL,
+			arrival_delay INTEGER,
+			arrival_uncertainty INTEGER,
+			departure_delay INTEGER,
+			departure_uncertainty INTEGER,
+			stop_id TEXT NOT NULL,
+			PRIMARY KEY (trip_update_entity_id, stop_sequence),
+			FOREIGN KEY (trip_update_entity_id) REFERENCES trip_update(entity_id)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("stop_time_updateテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("stop_time_updateテーブルを作成または確認しました。")
+
+	// vehicle_position テーブル作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS vehicle_position (
+			entity_id TEXT NOT NULL,
 			current_stop_sequence INTEGER,
 			latitude REAL,
 			longitude REAL,
 			speed REAL,
 			stop_id TEXT,
-			timestamp TEXT,
-			label TEXT
+			position_timestamp TEXT,
+			trip_id TEXT,
+			vehicle_id TEXT,
+			FOREIGN KEY (entity_id) REFERENCES entity(id),
+			FOREIGN KEY (trip_id) REFERENCES trip(trip_id),
+			FOREIGN KEY (vehicle_id) REFERENCES vehicle(id),
+			PRIMARY KEY (entity_id)
 		)
 	`)
 	if err != nil {
-		return fmt.Errorf("vehicle_posテーブル作成に失敗: %w", err)
+		return fmt.Errorf("vehicle_positionテーブル作成に失敗: %w", err)
 	}
-	fmt.Println("vehicle_posテーブルを作成または確認しました。")
+	fmt.Println("vehicle_positionテーブルを作成または確認しました。")
+
 	return nil
+}
+
+// TripUpdateResponseのデータをテーブルに挿入
+func insertTripUpdateResponse(db *sql.DB, response TripUpdateResponse) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("トランザクション開始に失敗: %w", err)
+	}
+	defer tx.Rollback() // エラーが発生した場合にロールバック
+
+	// response_header への挿入
+	_, err = tx.Exec(`
+		INSERT INTO response_header (timestamp, gtfs_realtime_version, incrementality, response_type)
+		VALUES (?, ?, ?, ?)
+	`, response.Header.Timestamp, response.Header.GtfsRealtimeVersion, response.Header.Incrementality, "trip_update")
+	if err != nil {
+		return fmt.Errorf("response_header への挿入に失敗: %w", err)
+	}
+
+	for _, entity := range response.Entity {
+		// entity への挿入
+		_, err = tx.Exec(`
+			INSERT INTO entity (id, response_timestamp, response_type)
+			VALUES (?, ?, ?)
+		`, entity.ID, response.Header.Timestamp, "trip_update")
+		if err != nil {
+			return fmt.Errorf("entity への挿入に失敗 (ID: %s): %w", entity.ID, err)
+		}
+
+		if entity.TripUpdate != nil {
+			// trip への挿入 (存在しない場合のみ)
+			_, err = tx.Exec(`
+				INSERT OR IGNORE INTO trip (trip_id, route_id, start_date, start_time)
+				VALUES (?, ?, ?, ?)
+			`, entity.TripUpdate.Trip.TripID, entity.TripUpdate.Trip.RouteID, entity.TripUpdate.Trip.StartDate, entity.TripUpdate.Trip.StartTime)
+			if err != nil {
+				return fmt.Errorf("trip への挿入に失敗 (TripID: %s): %w", entity.TripUpdate.Trip.TripID, err)
+			}
+
+			// vehicle への挿入 (存在しない場合のみ)
+			if entity.TripUpdate.Vehicle != nil {
+				_, err = tx.Exec(`
+					INSERT OR IGNORE INTO vehicle (id, label)
+					VALUES (?, ?)
+				`, entity.TripUpdate.Vehicle.ID, entity.TripUpdate.Vehicle.Label)
+				if err != nil {
+					return fmt.Errorf("vehicle への挿入に失敗 (ID: %s): %w", entity.TripUpdate.Vehicle.ID, err)
+				}
+			}
+
+			// trip_update への挿入
+			_, err = tx.Exec(`
+				INSERT INTO trip_update (entity_id, trip_id, vehicle_id)
+				VALUES (?, ?, ?)
+			`, entity.ID, entity.TripUpdate.Trip.TripID, entity.TripUpdate.Vehicle.ID)
+			if err != nil {
+				return fmt.Errorf("trip_update への挿入に失敗 (EntityID: %s): %w", entity.ID, err)
+			}
+
+			// stop_time_update への挿入
+			for _, stu := range entity.TripUpdate.StopTimeUpdate {
+				_, err = tx.Exec(`
+					INSERT INTO stop_time_update (trip_update_entity_id, stop_sequence, arrival_delay, arrival_uncertainty, departure_delay, departure_uncertainty, stop_id)
+					VALUES (?, ?, ?, ?, ?, ?, ?)
+				`, entity.ID, stu.StopSequence, stu.Arrival.Delay, stu.Arrival.Uncertainty, stu.Departure.Delay, stu.Departure.Uncertainty, stu.StopID)
+				if err != nil {
+					return fmt.Errorf("stop_time_update への挿入に失敗 (EntityID: %s, StopSequence: %d): %w", entity.ID, stu.StopSequence, err)
+				}
+			}
+		}
+	}
+
+	return tx.Commit()
+}
+
+// VehiclePositionResponseのデータをテーブルに挿入
+func insertVehiclePositionResponse(db *sql.DB, response VehiclePositionResponse) error {
+	tx, err := db.Begin()
+	if err != nil {
+		return fmt.Errorf("トランザクション開始に失敗: %w", err)
+	}
+	defer tx.Rollback() // エラーが発生した場合にロールバック
+
+	// response_header への挿入
+	_, err = tx.Exec(`
+		INSERT INTO response_header (timestamp, response_type)
+		VALUES (?, ?)
+	`, response.Entity[0].Vehicle.Timestamp, "vehicle_position") // Vehicle の Timestamp を使用
+	if err != nil {
+		return fmt.Errorf("response_header への挿入に失敗: %w", err)
+	}
+
+	for _, entity := range response.Entity {
+		if entity.Vehicle != nil {
+			// entity への挿入
+			_, err = tx.Exec(`
+				INSERT INTO entity (id, response_timestamp, response_type)
+				VALUES (?, ?, ?)
+			`, entity.ID, entity.Vehicle.Timestamp, "vehicle_position")
+			if err != nil {
+				return fmt.Errorf("entity への挿入に失敗 (ID: %s): %w", entity.ID, err)
+			}
+
+			// trip への挿入 (存在しない場合のみ)
+			_, err = tx.Exec(`
+				INSERT OR IGNORE INTO trip (trip_id, route_id, start_date, start_time)
+				VALUES (?, ?, ?, ?)
+			`, entity.Vehicle.Trip.TripID, entity.Vehicle.Trip.RouteID, entity.Vehicle.Trip.StartDate, entity.Vehicle.Trip.StartTime)
+			if err != nil {
+				return fmt.Errorf("trip への挿入に失敗 (TripID: %s): %w", entity.Vehicle.Trip.TripID, err)
+			}
+
+			// vehicle への挿入 (存在しない場合のみ)
+			_, err = tx.Exec(`
+				INSERT OR IGNORE INTO vehicle (id, label)
+				VALUES (?, ?)
+			`, entity.Vehicle.ID, entity.Vehicle.Label)
+			if err != nil {
+				return fmt.Errorf("vehicle への挿入に失敗 (ID: %s): %w", entity.Vehicle.ID, err)
+			}
+
+			// vehicle_position への挿入
+			_, err = tx.Exec(`
+				INSERT INTO vehicle_position (entity_id, current_stop_sequence, latitude, longitude, speed, stop_id, position_timestamp, trip_id, vehicle_id)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+			`, entity.ID, entity.Vehicle.CurrentStopSequence, entity.Vehicle.Position.Latitude, entity.Vehicle.Position.Longitude, entity.Vehicle.Position.Speed, entity.Vehicle.StopID, entity.Vehicle.Timestamp, entity.Vehicle.Trip.TripID, entity.Vehicle.ID)
+			if err != nil {
+				return fmt.Errorf("vehicle_position への挿入に失敗 (EntityID: %s): %w", entity.ID, err)
+			}
+		}
+	}
+
+	return tx.Commit()
 }
 
 // routesテーブルを作成
@@ -162,64 +389,6 @@ func createStopTimesTable(db *sql.DB) error {
 		return fmt.Errorf("stop_timesテーブル作成に失敗: %w", err)
 	}
 	fmt.Println("stops_timesテーブルを作成または確認しました。")
-	return nil
-}
-
-// vehiclePos構造体のデータをvehicle_posテーブルに挿入
-func insertVehiclePos(tx *sql.Tx, entity *struct {
-	ID      string `json:"id"`
-	Vehicle *struct {
-		CurrentStopSequence int64 `json:"currentStopSequence"`
-		Position            struct {
-			Latitude  float64 `json:"latitude"`
-			Longitude float64 `json:"longitude"`
-			Speed     float64 `json:"speed"`
-		} `json:"position"`
-		StopID    string `json:"stopId"`
-		Timestamp string `json:"timestamp"`
-		Trip      struct {
-			RouteID   string `json:"routeId"`
-			StartDate string `json:"startDate"`
-			StartTime string `json:"startTime"`
-			TripID    string `json:"tripId"`
-		} `json:"trip"`
-		ID    string `json:"id"`
-		Label string `json:"label"`
-	} `json:"vehicle,omitempty"`
-}) error {
-	if entity.Vehicle == nil {
-		return nil // Vehicle 情報がない場合はスキップ
-	}
-
-	stmt, err := tx.Prepare(`
-		INSERT OR REPLACE INTO vehicle_pos (
-			id, route_id, start_date, start_time, trip_id,
-			current_stop_sequence, latitude, longitude, speed,
-			stop_id, timestamp, label
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`)
-	if err != nil {
-		return fmt.Errorf("failed to prepare statement: %w", err)
-	}
-	defer stmt.Close()
-
-	_, err = stmt.Exec(
-		entity.ID,
-		entity.Vehicle.Trip.RouteID,
-		entity.Vehicle.Trip.StartDate,
-		entity.Vehicle.Trip.StartTime,
-		entity.Vehicle.Trip.TripID,
-		entity.Vehicle.CurrentStopSequence,
-		entity.Vehicle.Position.Latitude,
-		entity.Vehicle.Position.Longitude,
-		entity.Vehicle.Position.Speed,
-		entity.Vehicle.StopID,
-		entity.Vehicle.Timestamp,
-		entity.Vehicle.Label,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to execute statement for vehicle ID %s: %w", entity.ID, err)
-	}
 	return nil
 }
 
@@ -576,45 +745,4 @@ func initStaticDb(dbFile string) {
 		log.Fatalf("stop_timesファイルの処理に失敗: %v", err)
 	}
 	fmt.Println("stop_timesデータの登録が完了しました。")
-}
-
-func testDynamicDb(dbFile string, data ResponseData) {
-
-	db, err := setupDb(dbFile)
-	if err != nil {
-		log.Fatalf("データベース接続に失敗: %v", err)
-	}
-	defer db.Close()
-
-	err = createVehiclePosTable(db)
-	if err != nil {
-		log.Fatalf("routesテーブルの作成に失敗: %v", err)
-	}
-
-	tx, err := db.Begin()
-	if err != nil {
-		fmt.Println("Failed to begin transaction:", err)
-		return
-	}
-	defer tx.Rollback() // エラーが発生した場合にロールバック
-
-	// 取得した各 Entity を挿入
-	for _, entity := range data.Entity {
-		err := insertVehiclePos(tx, &entity) // Entity へのポインタを渡す
-
-		// デバッグ用
-		//fmt.Println(entity.ID)
-
-		if err != nil {
-			fmt.Println("Error inserting/updating vehicle:", err)
-			return // エラーが発生したら処理を中断 (必要に応じて継続することも可能)
-		}
-	}
-
-	// トランザクションのコミット
-	err = tx.Commit()
-	if err != nil {
-		fmt.Println("Failed to commit transaction:", err)
-		return
-	}
 }

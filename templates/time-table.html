@@ -1,0 +1,45 @@
+{{ define "title" }}index{{ end }}
+
+{{ define "content" }}
+
+    <script>
+        const websocket = new WebSocket("ws://localhost:8888/time-table");
+
+        websocket.onopen = () => {
+        console.log("WebSocket connection established");
+        };
+
+        websocket.onmessage = (event) => {
+        const trainInfo = JSON.parse(event.data);
+        updateTrainInfoDisplay(trainInfo);
+        };
+
+        websocket.onclose = () => {
+        console.log("WebSocket connection closed");
+        };
+
+        websocket.onerror = (error) => {
+        console.error("WebSocket error:", error);
+        };
+
+        function updateTrainInfoDisplay(info) {
+        document.getElementById("currentTime").textContent = info["時刻"];
+        document.getElementById("delayStatus").textContent = info["遅延"];
+        document.getElementById("operationStatus").textContent = info["運行状況"];
+        // 他の運行情報も同様に表示
+        }
+    </script>
+
+        <div id="trainInfo">
+            <p>現在時刻: <span id="currentTime"></span></p>
+            <p>遅延状況: <span id="delayStatus"></span></p>
+            <p>運行状況: <span id="operationStatus"></span></p>
+        </div>
+
+    <div class="text-center">
+        <h1>Test page</h1>
+    </div>
+
+    
+    
+{{ end }}

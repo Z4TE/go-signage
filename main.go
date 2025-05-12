@@ -5,47 +5,42 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
 )
 
 const configPath string = "settings.conf"
-const refreshInterval = 2 * time.Minute
 
 func main() {
+	config := readConfig(configPath)
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
+	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + config.uid + "&agency_id=" + config.agency_id + "&output=json"
 
-	var dbFile string = "static.sql"
-
-	filename := filepath.Join("./databases", dbFile) // 相対パスを構築
+	// 作成するDBのリスト
+	dbFiles := []string{"dynamic.sql", "static.sql"}
 
 	// DBが存在しなければ初期化
-	if _, err := os.Stat(filename); os.IsNotExist(err) {
-		initStaticDb(dbFile)
-	} else if err == nil {
-		fmt.Println(filename, "は存在します。")
-	} else {
-		fmt.Println("ファイルの状態を確認中にエラーが発生しました:", err)
+	for _, dbFile := range dbFiles {
+		filename := filepath.Join("./databases", dbFile)
+
+		if _, err := os.Stat(filename); os.IsNotExist(err) {
+			initStaticDb(dbFile)
+		} else if err == nil {
+			fmt.Println(filename, "は存在します。")
+		} else {
+			fmt.Println("ファイル", filename, "の状態を確認中にエラーが発生しました:", err)
+		}
 	}
-
-	// DB検索 (デバッグ用)
-	//searchDb(dbFile)
-
-	config := readConfig(configPath)
 
 	if config.uid == "" {
 		errorMessage = "API key is empty."
 		errorTitle = "API key error"
 	}
 
-	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + config.uid + "&agency_id=" + config.agency_id + "&output=json"
-
 	// gtfs.goから車両情報を取得
 	data := fetchStatus(apiURL)
 
-	testDynamicDb("dynamic.sql", *data)
-	getStopNameByStopSeq("dynamic.sql", "static.sql", 1)
+	//testDynamicDb("dynamic.sql", *data)
 
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -92,6 +87,9 @@ func main() {
 
 	// ダウンローダ
 	http.HandleFunc("/dl", downloadHandler)
+
+	// 時刻表(リアルタイム)
+	http.HandleFunc("/time-table", handleConnections)
 
 	fmt.Printf("Listening on localhost:%s...\n", port)
 	err := http.ListenAndServe(":"+port, nil)

@@ -1,0 +1,71 @@
+-- 運行情報レスポンスヘッダー (共通)
+CREATE TABLE response_header (
+    timestamp TEXT NOT NULL,
+    gtfs_realtime_version TEXT, -- TripUpdateResponse のみ
+    incrementality TEXT,       -- TripUpdateResponse のみ
+    response_type TEXT NOT NULL CHECK (response_type IN ('trip_update', 'vehicle_position')),
+    PRIMARY KEY (timestamp, response_type) -- タイムスタンプとレスポンスタイプで一意に識別
+);
+
+-- エンティティ (共通)
+CREATE TABLE entity (
+    id TEXT PRIMARY KEY NOT NULL,
+    response_timestamp TEXT NOT NULL,
+    response_type TEXT NOT NULL,
+    FOREIGN KEY (response_timestamp, response_type) REFERENCES response_header(timestamp, response_type)
+);
+
+-- トリップ情報 (共通)
+CREATE TABLE trip (
+    trip_id TEXT PRIMARY KEY NOT NULL,
+    route_id TEXT NOT NULL,
+    start_date TEXT NOT NULL,
+    start_time TEXT NOT NULL
+);
+
+-- 車両情報 (共通)
+CREATE TABLE vehicle (
+    id TEXT PRIMARY KEY NOT NULL,
+    label TEXT
+);
+
+-- TripUpdate の詳細
+CREATE TABLE trip_update (
+    entity_id TEXT NOT NULL,
+    trip_id TEXT NOT NULL,
+    vehicle_id TEXT,
+    FOREIGN KEY (entity_id) REFERENCES entity(id),
+    FOREIGN KEY (trip_id) REFERENCES trip(trip_id),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(id),
+    PRIMARY KEY (entity_id) -- entity_id は TripUpdate 内で一意
+);
+
+-- StopTimeUpdate (TripUpdate の詳細)
+CREATE TABLE stop_time_update (
+    trip_update_entity_id TEXT NOT NULL,
+    stop_sequence INTEGER NOT NULL,
+    arrival_delay INTEGER,
+    arrival_uncertainty INTEGER,
+    departure_delay INTEGER,
+    departure_uncertainty INTEGER,
+    stop_id TEXT NOT NULL,
+    PRIMARY KEY (trip_update_entity_id, stop_sequence),
+    FOREIGN KEY (trip_update_entity_id) REFERENCES trip_update(entity_id)
+);
+
+-- VehiclePosition の詳細
+CREATE TABLE vehicle_position (
+    entity_id TEXT NOT NULL,
+    current_stop_sequence INTEGER,
+    latitude REAL,
+    longitude REAL,
+    speed REAL,
+    stop_id TEXT,
+    position_timestamp TEXT,
+    trip_id TEXT,
+    vehicle_id TEXT,
+    FOREIGN KEY (entity_id) REFERENCES entity(id),
+    FOREIGN KEY (trip_id) REFERENCES trip(trip_id),
+    FOREIGN KEY (vehicle_id) REFERENCES vehicle(id),
+    PRIMARY KEY (entity_id) -- entity_id は VehiclePosition 内で一意
+);

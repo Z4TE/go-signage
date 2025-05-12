@@ -8,7 +8,8 @@ import (
 	"os"
 )
 
-type ResponseData struct {
+// 車両の位置情報を格納する構造体
+type VehiclePositionResponse struct {
 	Entity []struct {
 		ID      string `json:"id"`
 		Vehicle *struct {
@@ -32,19 +33,43 @@ type ResponseData struct {
 	} `json:"entity"`
 }
 
-// 時刻表に掲載する情報の構造体
-type TimeTable struct {
+// 更新情報を格納する構造体
+type TripUpdateResponse struct {
 	Entity []struct {
-		Vehicle struct {
-			RouteID             string `json:"routeId"`
-			CurrentStopSequence string `json:"currentStopSequence"`
-			NextStopID          string `json:"nextStopId"`
-			NextStopTime        string `json:"nextStopTime"`
-		}
-	}
+		ID         string `json:"id"`
+		TripUpdate *struct {
+			StopTimeUpdate []struct {
+				Arrival struct {
+					Delay       int `json:"delay"`
+					Uncertainty int `json:"uncertainty"`
+				} `json:"arrival"`
+				Departure struct {
+					Delay       int `json:"delay"`
+					Uncertainty int `json:"uncertainty"`
+				} `json:"departure"`
+				StopID       string `json:"stopId"`
+				StopSequence int    `json:"stopSequence"`
+			} `json:"stopTimeUpdate"`
+			Trip struct {
+				RouteID   string `json:"routeId"`
+				StartDate string `json:"startDate"`
+				StartTime string `json:"startTime"`
+				TripID    string `json:"tripId"`
+			} `json:"trip"`
+			Vehicle *struct {
+				ID    string `json:"id"`
+				Label string `json:"label"`
+			} `json:"vehicle"`
+		} `json:"tripUpdate"`
+	} `json:"entity"`
+	Header struct {
+		GtfsRealtimeVersion string `json:"gtfsRealtimeVersion"`
+		Incrementality      string `json:"incrementality"`
+		Timestamp           string `json:"timestamp"`
+	} `json:"header"`
 }
 
-func fetchStatus(apiURL string) *ResponseData {
+func fetchStatus(apiURL string) *VehiclePositionResponse {
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -64,7 +89,7 @@ func fetchStatus(apiURL string) *ResponseData {
 		os.Exit(1)
 	}
 
-	var data ResponseData
+	var data VehiclePositionResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		fmt.Println("Failed to decode JSON format:", err)
