@@ -8,8 +8,8 @@ import (
 )
 
 type Config struct {
-	uid       string
-	agency_id string
+	uid      string
+	agencyID string
 }
 
 func readConfig(path string) *Config {
@@ -27,8 +27,8 @@ func readConfig(path string) *Config {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "uid:") {
 			config.uid = strings.TrimSpace(strings.TrimPrefix(line, "uid:"))
-		} else if strings.HasPrefix(line, "agency_id:") {
-			config.agency_id = strings.TrimSpace(strings.TrimPrefix(line, "agency_id:"))
+		} else if strings.HasPrefix(line, "agencyID:") {
+			config.agencyID = strings.TrimSpace(strings.TrimPrefix(line, "agencyID:"))
 		}
 	}
 

@@ -189,7 +189,7 @@ func createTablesOnDynamicDb(db *sql.DB) error {
 }
 
 // TripUpdateResponseのデータをテーブルに挿入
-func insertTripUpdateResponse(db *sql.DB, response TripUpdateResponse) error {
+func insertTripUpdateResponse(db *sql.DB, response *TripUpdateResponse) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("トランザクション開始に失敗: %w", err)
@@ -262,20 +262,27 @@ func insertTripUpdateResponse(db *sql.DB, response TripUpdateResponse) error {
 }
 
 // VehiclePositionResponseのデータをテーブルに挿入
-func insertVehiclePositionResponse(db *sql.DB, response VehiclePositionResponse) error {
+func insertVehiclePositionResponse(db *sql.DB, response *VehiclePositionResponse) error {
 	tx, err := db.Begin()
 	if err != nil {
 		return fmt.Errorf("トランザクション開始に失敗: %w", err)
 	}
 	defer tx.Rollback() // エラーが発生した場合にロールバック
 
-	// response_header への挿入
-	_, err = tx.Exec(`
-		INSERT INTO response_header (timestamp, response_type)
-		VALUES (?, ?)
-	`, response.Entity[0].Vehicle.Timestamp, "vehicle_position") // Vehicle の Timestamp を使用
-	if err != nil {
-		return fmt.Errorf("response_header への挿入に失敗: %w", err)
+	if len(response.Entity) > 0 && response.Entity[0].Vehicle != nil {
+		// response_header への挿入
+		_, err = tx.Exec(`
+			INSERT INTO response_header (timestamp, response_type)
+			VALUES (?, ?)
+		`, response.Entity[0].Vehicle.Timestamp, "vehicle_position") // Vehicle の Timestamp を使用
+		if err != nil {
+			return fmt.Errorf("response_header への挿入に失敗: %w", err)
+		}
+	} else {
+		fmt.Println("警告: response.Entity が空または最初の要素に Vehicle がありません。response_header への挿入をスキップします。")
+		// ここで return nil とするか、エラーを返すかはアプリケーションの要件によります。
+		// エラーを返す場合は、以下のようにします。
+		// return fmt.Errorf("response.Entity が空または最初の要素に Vehicle がありません")
 	}
 
 	for _, entity := range response.Entity {
@@ -745,4 +752,21 @@ func initStaticDb(dbFile string) {
 		log.Fatalf("stop_timesファイルの処理に失敗: %v", err)
 	}
 	fmt.Println("stop_timesデータの登録が完了しました。")
+}
+
+func initDynamicDb(dbFile string) {
+
+	db, err := setupDb(dbFile)
+	if err != nil {
+		log.Fatalf("データベース接続に失敗: %v", err)
+	}
+	defer db.Close()
+
+	createTablesOnDynamicDb(db)
+
+	vehiclePosData := fetchVehiclePosition()
+	tripUpdateData := fetchTripUpdate()
+
+	insertVehiclePositionResponse(db, vehiclePosData)
+	insertTripUpdateResponse(db, tripUpdateData)
 }

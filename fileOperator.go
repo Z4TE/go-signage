@@ -21,7 +21,7 @@ func getExecutableDir() (string, error) {
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
 	config := readConfig(configPath)
-	var targetURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.agency_id + "&uid=" + config.uid
+	var targetURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.agencyID + "&uid=" + config.uid
 
 	exeDir, _ := getExecutableDir()
 	zipPath := filepath.Join(exeDir, "static", "gtfs.zip")

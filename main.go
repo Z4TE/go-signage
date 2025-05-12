@@ -14,22 +14,29 @@ func main() {
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
-	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?uid=" + config.uid + "&agency_id=" + config.agency_id + "&output=json"
 
 	// 作成するDBのリスト
-	dbFiles := []string{"dynamic.sql", "static.sql"}
+	staticDbFile := "static.sql"
+	dynamicDbFile := "dynamic.sql"
 
 	// DBが存在しなければ初期化
-	for _, dbFile := range dbFiles {
-		filename := filepath.Join("./databases", dbFile)
+	staticDbFileName := filepath.Join("./databases", staticDbFile)
+	dynamicDbFileName := filepath.Join("./databases", dynamicDbFile)
 
-		if _, err := os.Stat(filename); os.IsNotExist(err) {
-			initStaticDb(dbFile)
-		} else if err == nil {
-			fmt.Println(filename, "は存在します。")
-		} else {
-			fmt.Println("ファイル", filename, "の状態を確認中にエラーが発生しました:", err)
-		}
+	if _, err := os.Stat(staticDbFileName); os.IsNotExist(err) {
+		initStaticDb(staticDbFile)
+	} else if err == nil {
+		fmt.Println(staticDbFileName, "は存在します。")
+	} else {
+		fmt.Println("ファイル", staticDbFileName, "の状態を確認中にエラーが発生しました:", err)
+	}
+
+	if _, err := os.Stat(dynamicDbFileName); os.IsNotExist(err) {
+		initDynamicDb(dynamicDbFile)
+	} else if err == nil {
+		fmt.Println(dynamicDbFileName, "は存在します。")
+	} else {
+		fmt.Println("ファイル", dynamicDbFileName, "の状態を確認中にエラーが発生しました:", err)
 	}
 
 	if config.uid == "" {
@@ -38,9 +45,8 @@ func main() {
 	}
 
 	// gtfs.goから車両情報を取得
-	data := fetchStatus(apiURL)
-
-	//testDynamicDb("dynamic.sql", *data)
+	vehiclePosData := fetchVehiclePosition()
+	//tripUpdateData := fetchTripUpdate()
 
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -77,7 +83,7 @@ func main() {
 
 	// 時刻表ページ
 	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "status", data)
+		renderTemplate(w, "status", vehiclePosData)
 	})
 
 	// ヘルプページ

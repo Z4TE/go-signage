@@ -69,7 +69,10 @@ type TripUpdateResponse struct {
 	} `json:"header"`
 }
 
-func fetchStatus(apiURL string) *VehiclePositionResponse {
+func fetchVehiclePosition() *VehiclePositionResponse {
+
+	config := readConfig(configPath)
+	var apiURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.agencyID + "&uid=" + config.uid
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -90,6 +93,40 @@ func fetchStatus(apiURL string) *VehiclePositionResponse {
 	}
 
 	var data VehiclePositionResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println("Failed to decode JSON format:", err)
+		fmt.Println("Response:", string(body))
+		os.Exit(1)
+	}
+
+	return &data
+}
+
+func fetchTripUpdate() *TripUpdateResponse {
+
+	config := readConfig(configPath)
+	var apiURL string = "https://www.ptd-hs.jp/GetTripUpdate?agency_id=" + config.agencyID + "&uid=" + config.uid
+
+	resp, err := http.Get(apiURL)
+	if err != nil {
+		fmt.Println("HTTP request error:", err)
+		os.Exit(1)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		fmt.Println("Failed to read response body:", err)
+		os.Exit(1)
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		fmt.Printf("HTTP status error: %d, Response: %s\n", resp.StatusCode, string(body))
+		os.Exit(1)
+	}
+
+	var data TripUpdateResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		fmt.Println("Failed to decode JSON format:", err)
