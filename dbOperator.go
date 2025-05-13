@@ -12,6 +12,59 @@ import (
 	_ "github.com/mattn/go-sqlite3"
 )
 
+type CalendarDate struct {
+	ServiceID     string
+	Date          string
+	ExceptionType string
+}
+
+type Calendar struct {
+	ServiceID string
+	Monday    int
+	Tuesday   int
+	Wednesday int
+	Thursday  int
+	Friday    int
+	Saturday  int
+	Sunday    int
+	StartDate string
+	EndDate   string
+}
+
+type FareAttribute struct {
+	FareID           string
+	Price            int
+	CurrencyType     string
+	PaymentMethod    int
+	Transfers        int
+	AgencyID         string
+	TransferDuration string
+}
+
+type FareRule struct {
+	FareID        string
+	RouteID       string
+	OriginID      string
+	DestinationID string
+	ContainsID    string
+}
+
+type FeedInfo struct {
+	FeedPublisherName string
+	FeedPublisherURL  string
+	FeedLang          string
+	FeedStartDate     string
+	FeedEndDate       string
+	FeedVersion       string
+}
+
+type OfficeJP struct {
+	OfficeID    int
+	OfficeName  string
+	OfficeURL   string
+	OfficePhone string
+}
+
 type Route struct {
 	RouteID         string
 	AgencyID        string
@@ -22,7 +75,15 @@ type Route struct {
 	RouteURL        string
 	RouteColor      string
 	RouteTextColor  string
-	JpParentRouteID string
+	JPParentRouteID string
+}
+
+type Shape struct {
+	ShapeID           string
+	ShapePtLat        float64
+	ShapePtLon        float64
+	ShapePtSequence   int
+	ShapeDistTraveled string
 }
 
 type Stop struct {
@@ -51,6 +112,32 @@ type StopTime struct {
 	DropOffType       string
 	ShapeDistTraveled string
 	Timepoint         string
+}
+
+type Translation struct {
+	TableName   string
+	FieldName   string
+	Language    string
+	Translation string
+	RecordID    string
+	RecordSubID string
+	FieldValue  string
+}
+
+type Trip struct {
+	RouteID              string
+	ServiceID            string
+	TripID               string
+	TripHeadsign         string
+	TripShortName        string
+	DirectionID          string
+	BlockID              string
+	ShapeID              string
+	WheelchairAccessible int
+	BikesAllowed         int
+	JPTripDesc           string
+	JPTripDescSymbol     string
+	JPOfficeID           int
 }
 
 // SQLite3データベースに接続し、必要であればディレクトリとテーブルを作成する関数
@@ -328,16 +415,115 @@ func insertVehiclePositionResponse(db *sql.DB, response *VehiclePositionResponse
 	return tx.Commit()
 }
 
-// routesテーブルを作成
-func createRoutesTable(db *sql.DB) error {
+// GTFSの静的情報に関連するテーブルをまとめて作成
+func createStaticTables(db *sql.DB) error {
+	// calendar_datesテーブルを作成
 	_, err := db.Exec(`
-		CREATE TABLE IF NOT EXISTS routes (
+		CREATE TABLE IF NOT EXISTS calendar_dates (
+			service_id TEXT,
+			date TEXT,
+			exception_type TEXT,
+			PRIMARY KEY (service_id, date)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("calendar_datesテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("calendar_datesテーブルを作成または確認しました。")
+
+	// calendarテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS calendar (
+			service_id TEXT PRIMARY KEY,
+			monday INTEGER,
+			tuesday INTEGER,
+			wednesday INTEGER,
+			thursday INTEGER,
+			friday INTEGER,
+			saturday INTEGER,
+			sunday INTEGER,
+			start_date TEXT,
+			end_date TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("calendarテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("calendarテーブルを作成または確認しました。")
+
+	// fare_attributesテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS fare_attributes (
+			fare_id TEXT PRIMARY KEY,
+			price REAL,
+			currency_type TEXT,
+			payment_method INTEGER,
+			transfers INTEGER,
+			agency_id TEXT,
+			transfer_duration INTEGER
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("fare_attributesテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("fare_attributesテーブルを作成または確認しました。")
+
+	// fare_rulesテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS fare_rules (
+			fare_id TEXT,
 			route_id TEXT,
+			origin_id TEXT,
+			destination_id TEXT,
+			contains_id TEXT,
+			FOREIGN KEY (fare_id) REFERENCES fare_attributes(fare_id),
+			FOREIGN KEY (route_id) REFERENCES routes(route_id)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("fare_rulesテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("fare_rulesテーブルを作成または確認しました。")
+
+	// feed_infoテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS feed_info (
+			feed_publisher_name TEXT,
+			feed_publisher_url TEXT,
+			feed_lang TEXT,
+			feed_start_date TEXT,
+			feed_end_date TEXT,
+			feed_version TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("feed_infoテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("feed_infoテーブルを作成または確認しました。")
+
+	// office_jpテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS office_jp (
+			office_id INTEGER PRIMARY KEY,
+			office_name TEXT,
+			office_url TEXT,
+			office_phone TEXT
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("office_jpテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("office_jpテーブルを作成または確認しました。")
+
+	// routesテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS routes (
+			route_id TEXT PRIMARY KEY,
 			agency_id TEXT,
 			route_short_name TEXT,
 			route_long_name TEXT,
 			route_desc TEXT,
-			route_type TEXT,
+			route_type INTEGER,
 			route_url TEXT,
 			route_color TEXT,
 			route_text_color TEXT,
@@ -348,14 +534,27 @@ func createRoutesTable(db *sql.DB) error {
 		return fmt.Errorf("routesテーブル作成に失敗: %w", err)
 	}
 	fmt.Println("routesテーブルを作成または確認しました。")
-	return nil
-}
 
-// stopsテーブルを作成
-func createStopsTable(db *sql.DB) error {
-	_, err := db.Exec(`
+	// shapesテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS shapes (
+			shape_id TEXT,
+			shape_pt_lat REAL,
+			shape_pt_lon REAL,
+			shape_pt_sequence INTEGER,
+			shape_dist_traveled REAL,
+			PRIMARY KEY (shape_id, shape_pt_sequence)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("shapesテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("shapesテーブルを作成または確認しました。")
+
+	// stopsテーブルを作成
+	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS stops (
-			stop_id TEXT,
+			stop_id TEXT PRIMARY KEY,
 			stop_code TEXT,
 			stop_name TEXT,
 			stop_desc TEXT,
@@ -366,71 +565,446 @@ func createStopsTable(db *sql.DB) error {
 			location_type INTEGER,
 			parent_station TEXT,
 			stop_timezone TEXT,
-			wheelchair_boarding TEXT
+			wheelchair_boarding INTEGER
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("stopsテーブル作成に失敗: %w", err)
 	}
 	fmt.Println("stopsテーブルを作成または確認しました。")
-	return nil
-}
 
-// stop_timesテーブルを作成
-func createStopTimesTable(db *sql.DB) error {
-	_, err := db.Exec(`
+	// stop_timesテーブルを作成
+	_, err = db.Exec(`
 		CREATE TABLE IF NOT EXISTS stop_times (
 			trip_id TEXT,
 			arrival_time TEXT,
 			departure_time TEXT,
-			stop_id	TEXT,
+			stop_id TEXT,
 			stop_sequence INTEGER,
 			stop_headsign TEXT,
-			pickup_type TEXT,
-			drop_off_type TEXT,
-			shape_dist_traveled TEXT,
-			timepoint TEXT
+			pickup_type INTEGER,
+			drop_off_type INTEGER,
+			shape_dist_traveled REAL,
+			timepoint INTEGER,
+			FOREIGN KEY (trip_id) REFERENCES trips(trip_id),
+			FOREIGN KEY (stop_id) REFERENCES stops(stop_id),
+			PRIMARY KEY (trip_id, stop_sequence)
 		)
 	`)
 	if err != nil {
 		return fmt.Errorf("stop_timesテーブル作成に失敗: %w", err)
 	}
 	fmt.Println("stops_timesテーブルを作成または確認しました。")
+
+	// translationsテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS translations (
+		table_name TEXT,
+		field_name TEXT,
+		language TEXT,
+		translation TEXT,
+		record_id TEXT,
+		record_sub_id TEXT,
+		field_value TEXT,
+		PRIMARY KEY (table_name, field_name, language, record_id, record_sub_id, field_value)
+	)
+	`)
+	if err != nil {
+		return fmt.Errorf("translationsテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("translationsテーブルを作成または確認しました。")
+
+	// tripsテーブルを作成
+	_, err = db.Exec(`
+		CREATE TABLE IF NOT EXISTS trips (
+			route_id TEXT,
+			service_id TEXT,
+			trip_id TEXT PRIMARY KEY,
+			trip_headsign TEXT,
+			trip_short_name TEXT,
+			direction_id INTEGER,
+			block_id TEXT,
+			shape_id TEXT,
+			wheelchair_accessible INTEGER,
+			bikes_allowed INTEGER,
+			jp_trip_desc TEXT,
+			jp_trip_desc_symbol TEXT,
+			jp_office_id INTEGER,
+			FOREIGN KEY (route_id) REFERENCES routes(route_id),
+			FOREIGN KEY (service_id) REFERENCES calendar(service_id),
+			FOREIGN KEY (shape_id) REFERENCES shapes(shape_id),
+			FOREIGN KEY (jp_office_id) REFERENCES office_jp(office_id)
+		)
+	`)
+	if err != nil {
+		return fmt.Errorf("tripsテーブル作成に失敗: %w", err)
+	}
+	fmt.Println("tripsテーブルを作成または確認しました。")
+
 	return nil
 }
 
-// Route構造体のデータをroutesテーブルに挿入
-func insertRoute(db *sql.DB, route *Route) error {
+// calendar_datesテーブルにデータを挿入
+func insertCalendarDate(db *sql.DB, cd *CalendarDate) error {
+	_, err := db.Exec(`
+		INSERT INTO calendar_dates (service_id, date, exception_type)
+		VALUES (?, ?, ?)
+	`, cd.ServiceID, cd.Date, cd.ExceptionType)
+	if err != nil {
+		return fmt.Errorf("calendar_datesテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// calendarテーブルにデータを挿入
+func insertCalendar(db *sql.DB, c *Calendar) error {
+	_, err := db.Exec(`
+		INSERT INTO calendar (service_id, monday, tuesday, wednesday, thursday, friday, saturday, sunday, start_date, end_date)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, c.ServiceID, c.Monday, c.Tuesday, c.Wednesday, c.Thursday, c.Friday, c.Saturday, c.Sunday, c.StartDate, c.EndDate)
+	if err != nil {
+		return fmt.Errorf("calendarテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// fare_attributesテーブルにデータを挿入
+func insertFareAttribute(db *sql.DB, fa *FareAttribute) error {
+	_, err := db.Exec(`
+		INSERT INTO fare_attributes (fare_id, price, currency_type, payment_method, transfers, agency_id, transfer_duration)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, fa.FareID, fa.Price, fa.CurrencyType, fa.PaymentMethod, fa.Transfers, fa.AgencyID, fa.TransferDuration)
+	if err != nil {
+		return fmt.Errorf("fare_attributesテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// fare_rulesテーブルにデータを挿入
+func insertFareRule(db *sql.DB, fr *FareRule) error {
+	_, err := db.Exec(`
+		INSERT INTO fare_rules (fare_id, route_id, origin_id, destination_id, contains_id)
+		VALUES (?, ?, ?, ?, ?)
+	`, fr.FareID, fr.RouteID, fr.OriginID, fr.DestinationID, fr.ContainsID)
+	if err != nil {
+		return fmt.Errorf("fare_rulesテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// feed_infoテーブルにデータを挿入
+func insertFeedInfo(db *sql.DB, fi *FeedInfo) error {
+	_, err := db.Exec(`
+		INSERT INTO feed_info (feed_publisher_name, feed_publisher_url, feed_lang, feed_start_date, feed_end_date, feed_version)
+		VALUES (?, ?, ?, ?, ?, ?)
+	`, fi.FeedPublisherName, fi.FeedPublisherURL, fi.FeedLang, fi.FeedStartDate, fi.FeedEndDate, fi.FeedVersion)
+	if err != nil {
+		return fmt.Errorf("feed_infoテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// office_jpテーブルにデータを挿入
+func insertOfficeJP(db *sql.DB, oj *OfficeJP) error {
+	_, err := db.Exec(`
+		INSERT INTO office_jp (office_id, office_name, office_url, office_phone)
+		VALUES (?, ?, ?, ?)
+	`, oj.OfficeID, oj.OfficeName, oj.OfficeURL, oj.OfficePhone)
+	if err != nil {
+		return fmt.Errorf("office_jpテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// routesテーブルにデータを挿入
+func insertRoute(db *sql.DB, r *Route) error {
 	_, err := db.Exec(`
 		INSERT INTO routes (route_id, agency_id, route_short_name, route_long_name, route_desc, route_type, route_url, route_color, route_text_color, jp_parent_route_id)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, route.RouteID, route.AgencyID, route.RouteShortName, route.RouteLongName, route.RouteDesc, route.RouteType, route.RouteURL, route.RouteColor, route.RouteTextColor, route.JpParentRouteID)
+	`, r.RouteID, r.AgencyID, r.RouteShortName, r.RouteLongName, r.RouteDesc, r.RouteType, r.RouteURL, r.RouteColor, r.RouteTextColor, r.JPParentRouteID)
 	if err != nil {
 		return fmt.Errorf("routesテーブルへのデータ挿入に失敗: %w", err)
 	}
 	return nil
 }
 
-// Stop構造体のデータをstopsテーブルに挿入
-func insertStop(db *sql.DB, stop *Stop) error {
+// shapesテーブルにデータを挿入
+func insertShape(db *sql.DB, s *Shape) error {
+	_, err := db.Exec(`
+		INSERT INTO shapes (shape_id, shape_pt_lat, shape_pt_lon, shape_pt_sequence, shape_dist_traveled)
+		VALUES (?, ?, ?, ?, ?)
+	`, s.ShapeID, s.ShapePtLat, s.ShapePtLon, s.ShapePtSequence, s.ShapeDistTraveled)
+	if err != nil {
+		return fmt.Errorf("shapesテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// stopsテーブルにデータを挿入
+func insertStop(db *sql.DB, st *Stop) error {
 	_, err := db.Exec(`
 		INSERT INTO stops (stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, zone_id, stop_url, location_type, parent_station, stop_timezone, wheelchair_boarding)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, stop.StopID, stop.StopCode, stop.StopName, stop.StopDesc, stop.StopLat, stop.StopLon, stop.ZoneID, stop.StopURL, stop.LocationType, stop.ParentStation, stop.StopTimezone, stop.WheelchairBoarding)
+	`, st.StopID, st.StopCode, st.StopName, st.StopDesc, st.StopLat, st.StopLon, st.ZoneID, st.StopURL, st.LocationType, st.ParentStation, st.StopTimezone, st.WheelchairBoarding)
 	if err != nil {
 		return fmt.Errorf("stopsテーブルへのデータ挿入に失敗: %w", err)
 	}
 	return nil
 }
 
-// StopTime構造体のデータをstop_timesテーブルに挿入
-func insertStopTime(db *sql.DB, stopTime *StopTime) error {
+// stop_timesテーブルにデータを挿入
+func insertStopTime(db *sql.DB, st *StopTime) error {
 	_, err := db.Exec(`
-		INSERT INTO stop_times (trip_id,arrival_time,departure_time,stop_id,stop_sequence,stop_headsign,pickup_type,drop_off_type,shape_dist_traveled,timepoint)
+		INSERT INTO stop_times (trip_id, arrival_time, departure_time, stop_id, stop_sequence, stop_headsign, pickup_type, drop_off_type, shape_dist_traveled, timepoint)
 		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-	`, stopTime.TripID, stopTime.ArrivalTime, stopTime.DepartureTime, stopTime.StopID, stopTime.StopSequence, stopTime.StopHeadsign, stopTime.PickupType, stopTime.DropOffType, stopTime.ShapeDistTraveled, stopTime.Timepoint)
+	`, st.TripID, st.ArrivalTime, st.DepartureTime, st.StopID, st.StopSequence, st.StopHeadsign, st.PickupType, st.DropOffType, st.ShapeDistTraveled, st.Timepoint)
 	if err != nil {
 		return fmt.Errorf("stop_timesテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// translationsテーブルにデータを挿入
+func insertTranslation(db *sql.DB, t *Translation) error {
+	_, err := db.Exec(`
+		INSERT INTO translations (table_name, field_name, language, translation, record_id, record_sub_id, field_value)
+		VALUES (?, ?, ?, ?, ?, ?, ?)
+	`, t.TableName, t.FieldName, t.Language, t.Translation, t.RecordID, t.RecordSubID, t.FieldValue)
+	if err != nil {
+		return fmt.Errorf("translationsテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// tripsテーブルにデータを挿入
+func insertTrip(db *sql.DB, tr *Trip) error {
+	_, err := db.Exec(`
+		INSERT INTO trips (route_id, service_id, trip_id, trip_headsign, trip_short_name, direction_id, block_id, shape_id, wheelchair_accessible, bikes_allowed, jp_trip_desc, jp_trip_desc_symbol, jp_office_id)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+	`, tr.RouteID, tr.ServiceID, tr.TripID, tr.TripHeadsign, tr.TripShortName, tr.DirectionID, tr.BlockID, tr.ShapeID, tr.WheelchairAccessible, tr.BikesAllowed, tr.JPTripDesc, tr.JPTripDescSymbol, tr.JPOfficeID)
+	if err != nil {
+		return fmt.Errorf("tripsテーブルへのデータ挿入に失敗: %w", err)
+	}
+	return nil
+}
+
+// calendar_dates.txtを処理しdbを操作
+func processCalendarDatesFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("calendar_datesファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("calendar_datesレコードの読み込みに失敗: %w", err)
+		}
+
+		calendarDate := &CalendarDate{
+			ServiceID:     record[0],
+			Date:          record[1],
+			ExceptionType: record[2],
+		}
+
+		err = insertCalendarDate(db, calendarDate)
+		if err != nil {
+			log.Printf("stop_timesデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// calendar.txtを処理しdbを操作
+func processCalendarFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("calendarファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("calendarレコードの読み込みに失敗: %w", err)
+		}
+
+		calendar := &Calendar{
+			ServiceID: record[0],
+			Monday:    atoi(record[1]),
+			Tuesday:   atoi(record[2]),
+			Wednesday: atoi(record[3]),
+			Thursday:  atoi(record[4]),
+			Friday:    atoi(record[5]),
+			Saturday:  atoi(record[6]),
+			Sunday:    atoi(record[7]),
+			StartDate: record[8],
+			EndDate:   record[9],
+		}
+
+		err = insertCalendar(db, calendar)
+		if err != nil {
+			log.Printf("calendarデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// fare_attributes.txtを処理しdbを操作
+func processFareAttributesFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("fare_attributesファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("fare_attributesレコードの読み込みに失敗: %w", err)
+		}
+
+		fareAttribute := &FareAttribute{
+			FareID:           record[0],
+			Price:            atoi(record[1]),
+			CurrencyType:     record[2],
+			PaymentMethod:    atoi(record[3]),
+			Transfers:        atoi(record[4]),
+			AgencyID:         record[5],
+			TransferDuration: record[6],
+		}
+
+		err = insertFareAttribute(db, fareAttribute)
+		if err != nil {
+			log.Printf("fare_attributesデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// fare_rules.txtを処理しdbを操作
+func processFareRulesFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("fare_rulesファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("fare_rulesレコードの読み込みに失敗: %w", err)
+		}
+
+		fareRule := &FareRule{
+			FareID:        record[0],
+			RouteID:       record[1],
+			OriginID:      record[2],
+			DestinationID: record[3],
+			ContainsID:    record[4],
+		}
+
+		err = insertFareRule(db, fareRule)
+		if err != nil {
+			log.Printf("fare_attributesデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// feed_info.txtを処理しdbを操作
+func processFeedInfoFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("feed_infoファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("feed_infoレコードの読み込みに失敗: %w", err)
+		}
+
+		feedInfo := &FeedInfo{
+			FeedPublisherName: record[0],
+			FeedPublisherURL:  record[1],
+			FeedLang:          record[2],
+			FeedStartDate:     record[3],
+			FeedEndDate:       record[4],
+			FeedVersion:       record[5],
+		}
+
+		err = insertFeedInfo(db, feedInfo)
+		if err != nil {
+			log.Printf("feed_infoデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// office_jp.txtを処理しdbを操作
+func processOfficeJPFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("office_jpファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("office_jpレコードの読み込みに失敗: %w", err)
+		}
+
+		officeJP := &OfficeJP{
+			OfficeID:    atoi(record[0]),
+			OfficeName:  record[1],
+			OfficeURL:   record[2],
+			OfficePhone: record[3],
+		}
+
+		err = insertOfficeJP(db, officeJP)
+		if err != nil {
+			log.Printf("office_jpデータの挿入エラー: %v", err)
+		}
 	}
 	return nil
 }
@@ -465,12 +1039,66 @@ func processRoutesFile(db *sql.DB, filename string) error {
 			RouteURL:        record[6],
 			RouteColor:      record[7],
 			RouteTextColor:  record[8],
-			JpParentRouteID: record[9],
+			JPParentRouteID: record[9],
 		}
 
 		err = insertRoute(db, route)
 		if err != nil {
 			log.Printf("routesデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// shapes.txtを処理しdbを操作
+func processShapesFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("shapesファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("shapesレコードの読み込みに失敗: %w", err)
+		}
+
+		var shapePtLat, shapePtLon float64
+		var shapePtSequence int
+		shapePtLat, err = strconv.ParseFloat(record[1], 64)
+		if err != nil {
+			log.Printf("緯度 '%s' の変換エラー: %v", record[1], err)
+			continue // エラーが発生したらこのレコードをスキップ
+		}
+		shapePtLon, err = strconv.ParseFloat(record[2], 64)
+		if err != nil {
+			log.Printf("経度 '%s' の変換エラー: %v", record[2], err)
+			continue // エラーが発生したらこのレコードをスキップ
+		}
+		shapePtSequence, err = strconv.Atoi(record[3])
+		if err != nil {
+			log.Printf("shape_pt_sequence '%s' の変換エラー: %v", record[3], err)
+			continue // エラーが発生したらこのレコードをスキップ
+		}
+
+		shape := &Shape{
+			ShapeID:           record[0],
+			ShapePtLat:        shapePtLat,
+			ShapePtLon:        shapePtLon,
+			ShapePtSequence:   shapePtSequence,
+			ShapeDistTraveled: record[4],
+		}
+
+		err = insertShape(db, shape)
+		if err != nil {
+			log.Printf("shapesデータの挿入エラー: %v", err)
 		}
 	}
 	return nil
@@ -578,6 +1206,88 @@ func processStopTimesFile(db *sql.DB, filename string) error {
 	return nil
 }
 
+// translations.txtを処理しdbを操作
+func processTranslationsFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("translationsファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("translationsレコードの読み込みに失敗: %w", err)
+		}
+
+		translation := &Translation{
+			TableName:   record[0],
+			FieldName:   record[1],
+			Language:    record[2],
+			Translation: record[3],
+			RecordID:    record[4],
+			RecordSubID: record[5],
+			FieldValue:  record[6],
+		}
+
+		err = insertTranslation(db, translation)
+		if err != nil {
+			log.Printf("translationsデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
+// trips.txtを処理しdbを操作
+func processTripsFile(db *sql.DB, filename string) error {
+	file, err := os.Open(filename)
+	if err != nil {
+		return fmt.Errorf("tripsファイルオープンに失敗: %w", err)
+	}
+	defer file.Close()
+
+	reader := csv.NewReader(file)
+	reader.Comma = ','
+
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return fmt.Errorf("tripsレコードの読み込みに失敗: %w", err)
+		}
+
+		trip := &Trip{
+			RouteID:              record[0],
+			ServiceID:            record[1],
+			TripID:               record[2],
+			TripHeadsign:         record[3],
+			TripShortName:        record[4],
+			DirectionID:          record[5],
+			BlockID:              record[6],
+			ShapeID:              record[7],
+			WheelchairAccessible: atoi(record[8]),
+			BikesAllowed:         atoi(record[9]),
+			JPTripDesc:           record[10],
+			JPTripDescSymbol:     record[11],
+			JPOfficeID:           atoi(record[12]),
+		}
+
+		err = insertTrip(db, trip)
+		if err != nil {
+			log.Printf("tripsデータの挿入エラー: %v", err)
+		}
+	}
+	return nil
+}
+
 // routesテーブルを検索し、結果をRouteのスライスで返す
 func searchRoutes(db *sql.DB, whereClause string, args ...interface{}) ([]Route, error) {
 	query := fmt.Sprintf("SELECT route_id, agency_id, route_short_name, route_long_name, route_desc, route_type, route_url, route_color, route_text_color, jp_parent_route_id FROM routes WHERE %s", whereClause)
@@ -590,7 +1300,7 @@ func searchRoutes(db *sql.DB, whereClause string, args ...interface{}) ([]Route,
 	var routes []Route
 	for rows.Next() {
 		var r Route
-		if err := rows.Scan(&r.RouteID, &r.AgencyID, &r.RouteShortName, &r.RouteLongName, &r.RouteDesc, &r.RouteType, &r.RouteURL, &r.RouteColor, &r.RouteTextColor, &r.JpParentRouteID); err != nil {
+		if err := rows.Scan(&r.RouteID, &r.AgencyID, &r.RouteShortName, &r.RouteLongName, &r.RouteDesc, &r.RouteType, &r.RouteURL, &r.RouteColor, &r.RouteTextColor, &r.JPParentRouteID); err != nil {
 			return nil, fmt.Errorf("routesテーブルの行のスキャンに失敗: %w", err)
 		}
 		routes = append(routes, r)
@@ -601,56 +1311,6 @@ func searchRoutes(db *sql.DB, whereClause string, args ...interface{}) ([]Route,
 	}
 
 	return routes, nil
-}
-
-// stopsテーブルを検索し、結果をStopのスライスで返す
-func searchStops(db *sql.DB, whereClause string, args ...interface{}) ([]Stop, error) {
-	query := fmt.Sprintf("SELECT stop_id, stop_code, stop_name, stop_desc, stop_lat, stop_lon, zone_id, stop_url, location_type, parent_station, stop_timezone, wheelchair_boarding FROM stops WHERE %s", whereClause)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("stopsテーブルの検索に失敗: %w", err)
-	}
-	defer rows.Close()
-
-	var stops []Stop
-	for rows.Next() {
-		var s Stop
-		if err := rows.Scan(&s.StopID, &s.StopCode, &s.StopName, &s.StopDesc, &s.StopLat, &s.StopLon, &s.ZoneID, &s.StopURL, &s.LocationType, &s.ParentStation, &s.StopTimezone, &s.WheelchairBoarding); err != nil {
-			return nil, fmt.Errorf("stopsテーブルの行のスキャンに失敗: %w", err)
-		}
-		stops = append(stops, s)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("stopsテーブルの検索結果の処理中にエラーが発生: %w", err)
-	}
-
-	return stops, nil
-}
-
-// stopsテーブルを検索し、結果をStopのスライスで返す
-func searchStopTimes(db *sql.DB, whereClause string, args ...interface{}) ([]StopTime, error) {
-	query := fmt.Sprintf("SELECT trip_id, arrival_time, departure_time, stop_id, stop_sequence, stop_headsign, pickup_type, drop_off_type, shape_dist_traveled, timepoint FROM stop_times WHERE %s", whereClause)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("stop_timesテーブルの検索に失敗: %w", err)
-	}
-	defer rows.Close()
-
-	var stopTimes []StopTime
-	for rows.Next() {
-		var st StopTime
-		if err := rows.Scan(&st.TripID, &st.ArrivalTime, &st.DepartureTime, &st.StopID, &st.StopSequence, &st.StopHeadsign, &st.PickupType, &st.DropOffType, &st.ShapeDistTraveled, &st.Timepoint); err != nil {
-			return nil, fmt.Errorf("stop_timesテーブルの行のスキャンに失敗: %w", err)
-		}
-		stopTimes = append(stopTimes, st)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("stop_timesテーブルの検索結果の処理中にエラーが発生: %w", err)
-	}
-
-	return stopTimes, nil
 }
 
 // 文字列をintに安全に変換するヘルパー関数
@@ -664,76 +1324,88 @@ func atoi(s string) int {
 	return i
 }
 
-func searchDb(dbFile string) {
-	// DB検索
-	db, err := setupDb(dbFile)
-	if err != nil {
-		log.Fatalf("データベース接続に失敗: %v", err)
-	}
-	defer db.Close()
-
-	// routesテーブルの検索例
-	fmt.Println("\nroutesテーブルの検索例:")
-	routes, err := searchRoutes(db, "route_type = ?", 3)
-	if err != nil {
-		log.Fatalf("routesテーブルの検索エラー: %v", err)
-	}
-	for _, route := range routes {
-		fmt.Printf("Route ID: %s, Long Name: %s\n", route.RouteID, route.RouteLongName)
-	}
-
-	// stopsテーブルの検索例
-	fmt.Println("\nstop_timesテーブルの検索例:")
-	stops, err := searchStops(db, "stop_name LIKE ?", "%福島%")
-	if err != nil {
-		log.Fatalf("stopsテーブルの検索エラー: %v", err)
-	}
-	for _, stop := range stops {
-		fmt.Printf("Stop ID: %s, Name: %s, Latitude: %f, Longitude: %f\n", stop.StopID, stop.StopName, stop.StopLat, stop.StopLon)
-	}
-
-	// stop_timesテーブルの検索例
-	fmt.Println("\nstop_timesテーブルの検索例:")
-	stopTimes, err := searchStopTimes(db, "stop_sequence = ?", "1")
-	if err != nil {
-		log.Fatalf("stop_timesテーブルの検索エラー: %v", err)
-	}
-	for _, stopTime := range stopTimes {
-		fmt.Printf("Stop Sequence: %d, Stop ID: %s, Deaprture Time: %s\n", stopTime.StopSequence, stopTime.StopID, stopTime.DepartureTime)
-	}
-}
-
 func initStaticDb(dbFile string) {
 
 	// 既存のdbを削除
 	os.Remove(dbFile)
 
-	// routes.txt の処理
-	routesFile := "./static/gtfs/routes.txt"
 	db, err := setupDb(dbFile)
 	if err != nil {
 		log.Fatalf("データベース接続に失敗: %v", err)
 	}
 	defer db.Close()
 
-	err = createRoutesTable(db)
+	err = createStaticTables(db)
 	if err != nil {
 		log.Fatalf("routesテーブルの作成に失敗: %v", err)
 	}
 
+	// calendar_dates.txt の処理
+	calendarDatesFile := "./static/gtfs/calendar_dates.txt"
+	err = processCalendarDatesFile(db, calendarDatesFile)
+	if err != nil {
+		log.Fatalf("calendar_datesファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("calendar_datesデータの登録が完了しました。")
+
+	// calendar.txt の処理
+	calendarFile := "./static/gtfs/calendar.txt"
+	err = processCalendarFile(db, calendarFile)
+	if err != nil {
+		log.Fatalf("calendarファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("calendarデータの登録が完了しました。")
+
+	// fare_attributes.txt の処理
+	fareAttributesFile := "./static/gtfs/fare_attributes.txt"
+	err = processFareAttributesFile(db, fareAttributesFile)
+	if err != nil {
+		log.Fatalf("fare_attributeファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("fare_attributeデータの登録が完了しました。")
+
+	// fare_rules.txt の処理
+	fareRulesFile := "./static/gtfs/fare_rules.txt"
+	err = processFareRulesFile(db, fareRulesFile)
+	if err != nil {
+		log.Fatalf("fare_rulesファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("fare_rulesデータの登録が完了しました。")
+
+	// feed_info.txt の処理
+	feedInfoFile := "./static/gtfs/feed_info.txt"
+	err = processFeedInfoFile(db, feedInfoFile)
+	if err != nil {
+		log.Fatalf("feed_infoファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("feed_infoデータの登録が完了しました。")
+
+	// office_jp.txt の処理
+	officeJPFile := "./static/gtfs/office_jp.txt"
+	err = processOfficeJPFile(db, officeJPFile)
+	if err != nil {
+		log.Fatalf("office_jpファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("office_jpデータの登録が完了しました。")
+
+	// routes.txt の処理
+	routesFile := "./static/gtfs/routes.txt"
 	err = processRoutesFile(db, routesFile)
 	if err != nil {
 		log.Fatalf("routesファイルの処理に失敗: %v", err)
 	}
 	fmt.Println("routesデータの登録が完了しました。")
 
+	// shapes.txt の処理
+	shapesFile := "./static/gtfs/shapes.txt"
+	err = processShapesFile(db, shapesFile)
+	if err != nil {
+		log.Fatalf("shapesファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("shapesデータの登録が完了しました。")
+
 	// stops.txt の処理
 	stopsFile := "./static/gtfs/stops.txt"
-	err = createStopsTable(db)
-	if err != nil {
-		log.Fatalf("stopsテーブルの作成に失敗: %v", err)
-	}
-
 	err = processStopsFile(db, stopsFile)
 	if err != nil {
 		log.Fatalf("stopsファイルの処理に失敗: %v", err)
@@ -742,16 +1414,27 @@ func initStaticDb(dbFile string) {
 
 	// stop_times.txt の処理
 	stopTimesFile := "./static/gtfs/stop_times.txt"
-	err = createStopTimesTable(db)
-	if err != nil {
-		log.Fatalf("stop_timesテーブルの作成に失敗: %v", err)
-	}
-
 	err = processStopTimesFile(db, stopTimesFile)
 	if err != nil {
 		log.Fatalf("stop_timesファイルの処理に失敗: %v", err)
 	}
 	fmt.Println("stop_timesデータの登録が完了しました。")
+
+	// translations.txt の処理
+	translationsFile := "./static/gtfs/translations.txt"
+	err = processTranslationsFile(db, translationsFile)
+	if err != nil {
+		log.Fatalf("translationsファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("translationsデータの登録が完了しました。")
+
+	// trips.txt の処理
+	tripsFile := "./static/gtfs/trips.txt"
+	err = processTripsFile(db, tripsFile)
+	if err != nil {
+		log.Fatalf("tripsファイルの処理に失敗: %v", err)
+	}
+	fmt.Println("tripsデータの登録が完了しました。")
 }
 
 func initDynamicDb(dbFile string) {

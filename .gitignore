@@ -4,3 +4,4 @@ go-signage*
 static/gtfs/*
 static/gtfs.zip
 databases/*
+./*.dio

@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3" // SQLite3ドライバをインポート
+	_ "github.com/mattn/go-sqlite3"
 )
 
 func getStopNameByStopSeq(dynamicDbFile string, staticDbFile string, stopSeq int) {
