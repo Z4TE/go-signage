@@ -45,7 +45,7 @@ func main() {
 	}
 
 	// gtfs.goから車両情報を取得
-	vehiclePosData := fetchVehiclePosition()
+	//vehiclePosData := fetchVehiclePosition()
 	//tripUpdateData := fetchTripUpdate()
 
 	// Bootstrap読み込み
@@ -81,11 +81,6 @@ func main() {
 	// 設定保存用
 	http.HandleFunc("/save_settings", saveSettings)
 
-	// 時刻表ページ
-	http.HandleFunc("/status", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "status", vehiclePosData)
-	})
-
 	// ヘルプページ
 	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {
 		renderTemplate(w, "help", nil)
@@ -94,8 +89,11 @@ func main() {
 	// ダウンローダ
 	http.HandleFunc("/dl", downloadHandler)
 
+	go broadcastTimetable()
+	go handleBroadcasts()
+
 	// 時刻表(リアルタイム)
-	http.HandleFunc("/time-table", handleConnections)
+	http.HandleFunc("/time-table", timetableHandler)
 
 	fmt.Printf("Listening on localhost:%s...\n", port)
 	err := http.ListenAndServe(":"+port, nil)

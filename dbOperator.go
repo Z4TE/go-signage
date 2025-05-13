@@ -157,7 +157,7 @@ func setupDb(dbFile string) (*sql.DB, error) {
 }
 
 // 動的情報用のテーブルたちを作成
-func createTablesOnDynamicDb(db *sql.DB) error {
+func createDynamicTables(db *sql.DB) error {
 	// response_header テーブル作成
 	_, err := db.Exec(`
 		CREATE TABLE IF NOT EXISTS response_header (
@@ -1288,31 +1288,6 @@ func processTripsFile(db *sql.DB, filename string) error {
 	return nil
 }
 
-// routesテーブルを検索し、結果をRouteのスライスで返す
-func searchRoutes(db *sql.DB, whereClause string, args ...interface{}) ([]Route, error) {
-	query := fmt.Sprintf("SELECT route_id, agency_id, route_short_name, route_long_name, route_desc, route_type, route_url, route_color, route_text_color, jp_parent_route_id FROM routes WHERE %s", whereClause)
-	rows, err := db.Query(query, args...)
-	if err != nil {
-		return nil, fmt.Errorf("routesテーブルの検索に失敗: %w", err)
-	}
-	defer rows.Close()
-
-	var routes []Route
-	for rows.Next() {
-		var r Route
-		if err := rows.Scan(&r.RouteID, &r.AgencyID, &r.RouteShortName, &r.RouteLongName, &r.RouteDesc, &r.RouteType, &r.RouteURL, &r.RouteColor, &r.RouteTextColor, &r.JPParentRouteID); err != nil {
-			return nil, fmt.Errorf("routesテーブルの行のスキャンに失敗: %w", err)
-		}
-		routes = append(routes, r)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("routesテーブルの検索結果の処理中にエラーが発生: %w", err)
-	}
-
-	return routes, nil
-}
-
 // 文字列をintに安全に変換するヘルパー関数
 func atoi(s string) int {
 	i := 0
@@ -1445,7 +1420,7 @@ func initDynamicDb(dbFile string) {
 	}
 	defer db.Close()
 
-	createTablesOnDynamicDb(db)
+	createDynamicTables(db)
 
 	vehiclePosData := fetchVehiclePosition()
 	tripUpdateData := fetchTripUpdate()

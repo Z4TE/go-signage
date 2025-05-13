@@ -2,43 +2,113 @@
 
 {{ define "content" }}
 
-    <script>
-        const websocket = new WebSocket("ws://localhost:8888/time-table");
+    <body>
 
-        websocket.onopen = () => {
-        console.log("WebSocket connection established");
-        };
-
-        websocket.onmessage = (event) => {
-        const trainInfo = JSON.parse(event.data);
-        updateTrainInfoDisplay(trainInfo);
-        };
-
-        websocket.onclose = () => {
-        console.log("WebSocket connection closed");
-        };
-
-        websocket.onerror = (error) => {
-        console.error("WebSocket error:", error);
-        };
-
-        function updateTrainInfoDisplay(info) {
-        document.getElementById("currentTime").textContent = info["時刻"];
-        document.getElementById("delayStatus").textContent = info["遅延"];
-        document.getElementById("operationStatus").textContent = info["運行状況"];
-        // 他の運行情報も同様に表示
-        }
-    </script>
-
-        <div id="trainInfo">
-            <p>現在時刻: <span id="currentTime"></span></p>
-            <p>遅延状況: <span id="delayStatus"></span></p>
-            <p>運行状況: <span id="operationStatus"></span></p>
+    <div class="container text-center px-2">
+        <div class="row">
+            <div class="col fw-bold fs-1">
+                <p style="font-size: 1.6em;">デジタル時刻表 (暫定)</p>
+            </div>
+            <div class="col text-right text-info fw-bold fs-1">
+                <p id="realtime" style="font-size: 1.6em;"></p>
+            </div>
         </div>
-
-    <div class="text-center">
-        <h1>Test page</h1>
     </div>
+        
+    <table class="table table-striped fs-1" id="timetable">
+        <thead>
+            <tr>
+                <th>備考</th>
+                <th>路線名</th>
+                <th>出発時刻</th>
+                <th>行先</th>
+            </tr>
+        </thead>
+        <tbody class="table-group-divider" id="timetable-body">
+            {{ range . }}
+            <tr>
+                <td>{{ .Remark }}</td>
+                <td>{{ .RouteID }}</td>
+                <td class="departure-time">{{ .DepartureTime }}</td>
+                <td>{{ .Destination }}</td>
+            </tr>
+            {{ end }}
+        </tbody>
+    </table>
+
+
+    <script>
+        const timetableBody = document.getElementById('timetable-body');
+        const ws = new WebSocket('ws://localhost:8888/time-table');
+
+        ws.onmessage = (event) => {
+            const timetableData = JSON.parse(event.data);
+            renderTimetable(timetableData);
+        };
+
+        function renderTimetable(data) {
+            timetableBody.innerHTML = '';
+
+            data.forEach((item, index) => {
+                const row = timetableBody.insertRow();
+                const remarkCell = row.insertCell();
+                const routeIDCell = row.insertCell();
+                const departureTimeCell = row.insertCell();
+                const delayCell = row.insertCell(); // 空にしておく（非表示にするため）
+                const destinationCell = row.insertCell();
+
+                remarkCell.textContent = item.Remark;
+                routeIDCell.textContent = item.RouteID;
+                destinationCell.textContent = item.Destination;
+
+                if (item.Delay && item.Delay.trim() !== '') {
+                    // 遅延がある場合は交互に表示
+                    let showingDeparture = true;
+                    departureTimeCell.textContent = item.DepartureTime;
+
+                    setInterval(() => {
+                        departureTimeCell.textContent = showingDeparture ? item.Delay : item.DepartureTime;
+                        showingDeparture = !showingDeparture;
+                    }, 5000); // 5秒おきに切り替え
+                } else {
+                    // 遅延なし：そのまま出発時刻を表示
+                    departureTimeCell.textContent = item.DepartureTime;
+                }
+            });
+        }
+
+        ws.onopen = () => {
+            console.log('WebSocket connection opened');
+        };
+
+        ws.onclose = () => {
+            console.log('WebSocket connection closed');
+        };
+
+        ws.onerror = (error) => {
+            console.error('WebSocket error:', error);
+        };
+
+        function showClock() {
+            let nowTime = new Date();
+            let nowHour = nowTime.getHours();
+            let nowMin  = nowTime.getMinutes();
+            let nowSec  = nowTime.getSeconds();
+
+            // 0埋め
+            if (nowHour < 10) {
+                nowHour = "0" + nowHour;
+            }
+            if (nowMin < 10) {
+                nowMin = "0" + nowMin;
+            }
+
+            let msg = nowHour + ":" + nowMin;
+            document.getElementById("realtime").innerHTML = msg;
+            }
+            setInterval('showClock()',1000);
+    </script>
+</body>
 
     
     

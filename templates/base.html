@@ -25,7 +25,7 @@
     <!-- ヘッダ -->
     <header>
 
-        <nav class="navbar navbar-expand-lg navbar-dark border-bottom sticky-top bg-indigo-900">
+        <nav class="navbar navbar-expand-lg navbar-dark border-bottom sticky-top bg-indigo-900 d-none" id="main-navbar">
             <div class="container-fluid">
               <a class="navbar-brand" href="/">Top</a>
               <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
@@ -38,7 +38,7 @@
                       Menu
                     </a>
                     <ul class="dropdown-menu">
-                      <li><a class="dropdown-item" href="/status">Time table</a></li>
+                      <li><a class="dropdown-item" href="/time-table">Time table</a></li>
                       <li><a class="dropdown-item" href="/db">Database</a></li>
                       <li><a class="dropdown-item" href="/settings">Settings</a></li>
                       <li><a class="dropdown-item" href="/help">Help</a></li>
@@ -80,12 +80,12 @@
 <script src="../static/js/bootstrap.bundle.min.js"></script>
 
 <script>
-  const toggleLink = document.getElementById('navbarToggle');
-  const navbar = document.querySelector('nav.navbar'); // または id を使う場合：document.getElementById('main-navbar');
+const toggleLink = document.getElementById('navbarToggle');
+const navbar = document.getElementById('main-navbar');
 
   toggleLink.addEventListener('click', function (e) {
-    e.preventDefault(); // リンクのジャンプを無効化
-    navbar.style.display = (navbar.style.display === 'none') ? 'flex' : 'none';
+    e.preventDefault();
+    navbar.classList.toggle('d-none');
   });
 </script>
 
