@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"sync"
@@ -27,15 +28,33 @@ var clients = make(map[*websocket.Conn]bool)
 var broadcast = make(chan []TimeTable)
 var mutex sync.Mutex
 
-// getTimetable 定期的に運行情報を取得する関数 (実際の実装は外部API呼び出しやDBアクセスなど)
+// getTimetable 定期的に運行情報を取得する
 func getTimetable() []TimeTable {
-	// ここは実際には外部APIやDBからデータを取得する処理が入ります
-	// サンプルのデータとして固定値を返します
-	return []TimeTable{
-		{Remark: "まもなく", RouteID: "1", DepartureTime: "17:05", Destination: "福島"},
-		{Remark: "", RouteID: "2", DepartureTime: "17:10", Destination: "郡山"},
-		{Remark: "", RouteID: "3", DepartureTime: "17:15", Destination: "いわき"},
+
+	dbFile := "dynamic.sql"
+
+	db, err := setupDb(dbFile)
+	if err != nil {
+		log.Fatalf("データベース接続に失敗: %v", err)
 	}
+	defer db.Close()
+
+	vehiclePosData := fetchVehiclePosition()
+	tripUpdateData := fetchTripUpdate()
+
+	insertVehiclePositionResponse(db, vehiclePosData)
+	insertTripUpdateResponse(db, tripUpdateData)
+
+	for _, vp := range vehiclePosData.Entity {
+		fmt.Printf("%s\n", vp.ID)
+	}
+
+	for _, tu := range tripUpdateData.Entity {
+		fmt.Printf("%s\n", tu.TripUpdate.Trip.RouteID)
+	}
+
+	return nil
+
 }
 
 func broadcastTimetable() {
@@ -71,9 +90,9 @@ func handleBroadcasts() {
 
 func timetableHandler(w http.ResponseWriter, r *http.Request) {
 	timetableData := []TimeTable{
-		{Remark: "まもなく", RouteID: "1", DepartureTime: "17:05", Destination: "福島"},
-		{Remark: "", RouteID: "2", DepartureTime: "17:10", Destination: "郡山"},
-		{Remark: "", RouteID: "3", DepartureTime: "17:15", Destination: "いわき"},
+		{Remark: "鮫洲で通過待ち", RouteID: "普通", DepartureTime: "17:19", Destination: "浦賀"},
+		{Remark: "", RouteID: "急行", DepartureTime: "17:22", Destination: "羽田空港"},
+		{Remark: "遅延: 約3分", RouteID: "快特", DepartureTime: "17:27", Destination: "三崎口"},
 	}
 	renderTemplate(w, "time-table", timetableData)
 }

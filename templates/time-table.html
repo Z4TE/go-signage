@@ -4,24 +4,25 @@
 
     <body>
 
-    <div class="container text-center px-2">
-        <div class="row">
-            <div class="col fw-bold fs-1">
-                <p style="font-size: 1.6em;">デジタル時刻表 (暫定)</p>
+    <div class="container d-flex text-center">
+        <div class="row w-100">
+            <div class="col-6 fw-bold fs-1">
+                <p style="font-size: 1.6em;">デジタル時刻表</p>
             </div>
-            <div class="col text-right text-info fw-bold fs-1">
+
+            <div class="col-6 text-center text-info fw-bold fs-1">
                 <p id="realtime" style="font-size: 1.6em;"></p>
             </div>
         </div>
     </div>
         
-    <table class="table table-striped fs-1" id="timetable">
+    <table class="table table-striped fs-1 text-center" id="timetable">
         <thead>
             <tr>
-                <th>備考</th>
-                <th>路線名</th>
-                <th>出発時刻</th>
-                <th>行先</th>
+                <th scope="col" style="width: 25%">備考</th>
+                <th scope="col" style="width: 25%">路線名</th>
+                <th scope="col" style="width: 25%">出発時刻</th>
+                <th scope="col" style="width: 25%">行先</th>
             </tr>
         </thead>
         <tbody class="table-group-divider" id="timetable-body">
@@ -33,6 +34,11 @@
                 <td>{{ .Destination }}</td>
             </tr>
             {{ end }}
+
+            <div class="text-center text-danger">
+                <p>バックエンド未連携</p>
+            </div>
+
         </tbody>
     </table>
 

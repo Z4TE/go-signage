@@ -32,8 +32,8 @@ func readConfig(path string) *Config {
 		line := scanner.Text()
 		if strings.HasPrefix(line, "uid:") {
 			config.uid = strings.TrimSpace(strings.TrimPrefix(line, "uid:"))
-		} else if strings.HasPrefix(line, "agencyID:") {
-			config.agencyID = strings.TrimSpace(strings.TrimPrefix(line, "agencyID:"))
+		} else if strings.HasPrefix(line, "agency_id:") {
+			config.agencyID = strings.TrimSpace(strings.TrimPrefix(line, "agency_id:"))
 		}
 	}
 

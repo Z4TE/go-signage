@@ -72,7 +72,7 @@ type TripUpdateResponse struct {
 func fetchVehiclePosition() *VehiclePositionResponse {
 
 	config := readConfig(configPath)
-	var apiURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.agencyID + "&uid=" + config.uid
+	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?agency_id=" + config.agencyID + "&uid=" + config.uid + "&output=json"
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -96,7 +96,7 @@ func fetchVehiclePosition() *VehiclePositionResponse {
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		fmt.Println("Failed to decode JSON format:", err)
-		fmt.Println("Response:", string(body))
+		//fmt.Println("Response:", string(body))
 		os.Exit(1)
 	}
 
@@ -106,7 +106,7 @@ func fetchVehiclePosition() *VehiclePositionResponse {
 func fetchTripUpdate() *TripUpdateResponse {
 
 	config := readConfig(configPath)
-	var apiURL string = "https://www.ptd-hs.jp/GetTripUpdate?agency_id=" + config.agencyID + "&uid=" + config.uid
+	var apiURL string = "https://www.ptd-hs.jp/GetTripUpdate?agency_id=" + config.agencyID + "&uid=" + config.uid + "&output=json"
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -130,7 +130,7 @@ func fetchTripUpdate() *TripUpdateResponse {
 	err = json.Unmarshal(body, &data)
 	if err != nil {
 		fmt.Println("Failed to decode JSON format:", err)
-		fmt.Println("Response:", string(body))
+		//fmt.Println("Response:", string(body))
 		os.Exit(1)
 	}
 
