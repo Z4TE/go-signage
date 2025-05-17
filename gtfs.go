@@ -71,8 +71,12 @@ type TripUpdateResponse struct {
 
 func fetchVehiclePosition() *VehiclePositionResponse {
 
-	config := readConfig(configPath)
-	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?agency_id=" + config.agencyID + "&uid=" + config.uid + "&output=json"
+	config, err := readConfig(configPath)
+	if err != nil {
+		fmt.Printf("Failed to open config file: %v\n", err)
+	}
+
+	var apiURL string = "https://www.ptd-hs.jp/GetVehiclePosition?agency_id=" + config.AgencyID + "&uid=" + config.UID + "&output=json"
 
 	resp, err := http.Get(apiURL)
 	if err != nil {
@@ -105,8 +109,11 @@ func fetchVehiclePosition() *VehiclePositionResponse {
 
 func fetchTripUpdate() *TripUpdateResponse {
 
-	config := readConfig(configPath)
-	var apiURL string = "https://www.ptd-hs.jp/GetTripUpdate?agency_id=" + config.agencyID + "&uid=" + config.uid + "&output=json"
+	config, err := readConfig(configPath)
+	if err != nil {
+		fmt.Printf("Failed to open config file: %v\n", err)
+	}
+	var apiURL string = "https://www.ptd-hs.jp/GetTripUpdate?agency_id=" + config.AgencyID + "&uid=" + config.UID + "&output=json"
 
 	resp, err := http.Get(apiURL)
 	if err != nil {

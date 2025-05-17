@@ -1,5 +1,5 @@
 api_key.conf
-settings.conf
+settings.json
 go-signage*
 static/gtfs/*
 static/gtfs.zip

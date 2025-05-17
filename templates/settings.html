@@ -12,19 +12,19 @@
       <h2>API configurations</h2>
     </div>
 
-    <form class="px-4" action="/save_settings" method="post">
+    <form id="credentials" class="px-4">
       <div class="form-row">
         <div class="row">
           <div class="col mb-3">
-              <label for="keyInput" class="form-label">API key</label>
-              <input type="text" class="form-control" name="uidInput">
+              <label for="uid" class="form-label">API key</label>
+              <input type="text" class="form-control" id="uid" name="uid">
           </div>
 
           <div class="col mb-3">
-              <label for="keyInput" class="form-label">Agency ID</label>
-              <input type="text" class="form-control" name="agencyIdInput">
+              <label for="agency_id" class="form-label">Agency ID</label>
+              <input type="text" class="form-control" id="agency_id" name="agency_id">
           </div>
-        </div>
+        </div id="response">
         <div class="form-text mb-3">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
         <button type="submit" class="btn btn-primary">Submit</button>
       </div>
@@ -46,5 +46,39 @@
     </form>
 
     <hr>
+
+    <script>
+      const form = document.getElementById('credentials');
+
+      // フォームの submit イベントをリッスンする
+      form.addEventListener('submit', async function(event) {
+          // デフォルトのフォーム送信（ページ遷移）を停止する
+          event.preventDefault();
+
+          const formData = new FormData(form);
+
+          try {
+              // Fetch API で非同期にフォームデータを送信
+              const response = await fetch('/settings', {
+                  method: 'POST',
+                  body: formData,
+              });
+
+              // HTTPステータスコードが2xx以外の場合はエラーとして処理
+              if (!response.ok) {
+                  // サーバーからのエラーメッセージを取得（あれば）
+                  const errorBody = await response.text();
+                  throw new Error(`HTTP Error! Status: ${response.status}. ${errorBody || response.statusText}`);
+              }
+
+              // サーバーからの応答をJSONとしてパース
+              const data = await response.json();
+
+          } catch (error) {
+              console.error('フォーム送信エラー:', error);
+          }
+      });
+    
+    </script>
 
 {{ end }}

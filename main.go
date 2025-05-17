@@ -7,10 +7,13 @@ import (
 	"path/filepath"
 )
 
-const configPath string = "settings.conf"
+const configPath string = "settings.json"
 
 func main() {
-	config := readConfig(configPath)
+	config, configErr := readOrCreateConfig(configPath)
+	if configErr != nil {
+		fmt.Printf("Failed to open config file: %v\n", configErr)
+	}
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
@@ -39,7 +42,7 @@ func main() {
 		fmt.Println("ファイル", dynamicDbFileName, "の状態を確認中にエラーが発生しました:", err)
 	}
 
-	if config.uid == "" {
+	if config.UID == "" {
 		errorMessage = "API key is empty."
 		errorTitle = "API key error"
 	}
@@ -74,9 +77,7 @@ func main() {
 	})
 
 	// 設定ページ
-	http.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
-		renderTemplate(w, "settings", nil)
-	})
+	http.HandleFunc("/settings", submitHandler)
 
 	// 設定保存用
 	http.HandleFunc("/save_settings", saveSettings)

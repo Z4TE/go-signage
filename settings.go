@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"os"
@@ -35,4 +36,35 @@ func saveSettings(w http.ResponseWriter, r *http.Request) {
 	}
 
 	renderTemplate(w, "save", nil)
+}
+
+func submitHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	err := r.ParseMultipartForm(32 << 20) // 32MBのメモリ制限
+	if err != nil {
+		http.Error(w, "Failed to parse form", http.StatusBadRequest)
+		return
+	}
+
+	uid := r.FormValue("uid")
+	agencyID := r.FormValue("agency_id")
+
+	formData := Config{
+		UID:      uid,
+		AgencyID: agencyID,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(formData)
+
+	fmt.Printf("受信データ: UID=%s, Agency_ID=%s\n", uid, agencyID)
+
+	writeConfig("settings.json", &formData)
+
+	renderTemplate(w, "settings", nil)
 }

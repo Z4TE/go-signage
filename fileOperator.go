@@ -2,42 +2,68 @@ package main
 
 import (
 	"archive/zip"
-	"bufio"
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
 	"path/filepath"
 	"regexp"
-	"strings"
 )
 
 type Config struct {
-	uid      string
-	agencyID string
+	UID      string `json:"uid"`
+	AgencyID string `json:"agencyID"`
 }
 
-func readConfig(path string) *Config {
-
-	var config Config
-
+func readConfig(path string) (*Config, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		fmt.Printf("Failed to open file: %v\n", err)
+		return nil, fmt.Errorf("failed to open file: %w", err)
 	}
 	defer f.Close()
 
-	scanner := bufio.NewScanner(f)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if strings.HasPrefix(line, "uid:") {
-			config.uid = strings.TrimSpace(strings.TrimPrefix(line, "uid:"))
-		} else if strings.HasPrefix(line, "agency_id:") {
-			config.agencyID = strings.TrimSpace(strings.TrimPrefix(line, "agency_id:"))
-		}
+	var config Config
+	decoder := json.NewDecoder(f)
+	err = decoder.Decode(&config)
+	if err != nil {
+		return nil, fmt.Errorf("failed to decode JSON: %w", err)
 	}
 
-	return &config
+	return &config, nil
+}
+
+func readOrCreateConfig(path string) (*Config, error) {
+	_, err := os.Stat(path)
+	if os.IsNotExist(err) {
+		// ファイルが存在しない場合は作成する
+		emptyConfig := &Config{}
+		if err := writeConfig(path, emptyConfig); err != nil {
+			return nil, fmt.Errorf("failed to create default config: %w", err)
+		}
+		return emptyConfig, nil
+	} else if err != nil {
+		// その他のエラー
+		return nil, fmt.Errorf("failed to check if config exists: %w", err)
+	}
+
+	// ファイルが存在する場合は読み込む
+	return readConfig(path)
+}
+
+func writeConfig(path string, config *Config) error {
+	f, err := os.Create(path)
+	if err != nil {
+		return fmt.Errorf("failed to create file: %w", err)
+	}
+	defer f.Close()
+
+	encoder := json.NewEncoder(f)
+	err = encoder.Encode(config)
+	if err != nil {
+		return fmt.Errorf("failed to encode JSON: %w", err)
+	}
+	return nil
 }
 
 func getExecutableDir() (string, error) {
@@ -50,8 +76,12 @@ func getExecutableDir() (string, error) {
 
 func downloadHandler(w http.ResponseWriter, r *http.Request) {
 
-	config := readConfig(configPath)
-	var targetURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.agencyID + "&uid=" + config.uid
+	config, err := readConfig(configPath)
+	if err != nil {
+		fmt.Printf("Failed to open config file: %v\n", err)
+	}
+
+	var targetURL string = "https://www.ptd-hs.jp/GetData?agency_id=" + config.AgencyID + "&uid=" + config.UID
 
 	exeDir, _ := getExecutableDir()
 	zipPath := filepath.Join(exeDir, "static", "gtfs.zip")
