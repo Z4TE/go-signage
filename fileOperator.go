@@ -74,8 +74,8 @@ func getExecutableDir() (string, error) {
 	return filepath.Dir(exePath), nil
 }
 
-func downloadHandler(w http.ResponseWriter, r *http.Request) {
-
+// 静的GTFSデータのダウンロードに必要な情報を返す
+func gtfsDownloadInfo() (string, string, string) {
 	config, err := readConfig(configPath)
 	if err != nil {
 		fmt.Printf("Failed to open config file: %v\n", err)
@@ -87,9 +87,38 @@ func downloadHandler(w http.ResponseWriter, r *http.Request) {
 	zipPath := filepath.Join(exeDir, "static", "gtfs.zip")
 	destDir := filepath.Join(exeDir, "static")
 
+	return targetURL, zipPath, destDir
+}
+
+func updateStatic(dbFile string) {
+
+	targetURL, zipPath, destDir := gtfsDownloadInfo()
+
+	// 旧バージョンのGTFSファイルを削除
+	os.Remove(zipPath)
+	os.RemoveAll("./static/gtfs")
+
+	// 既存のDBを消去
+	staticDbFile := filepath.Join("./databases", dbFile)
+	os.Remove(staticDbFile)
+
+	downloadFile(zipPath, targetURL)
+
+	if err := extract(zipPath, destDir); err != nil {
+		fmt.Println(err)
+	}
+
+	// 新データでDB初期化
+	initStaticDb(dbFile)
+
+}
+
+func downloadHandler(w http.ResponseWriter, r *http.Request) {
+
 	if r.Method == "POST" {
 
-		renderTemplate(w, "save", nil)
+		targetURL, zipPath, destDir := gtfsDownloadInfo()
+
 		downloadFile(zipPath, targetURL)
 
 		if err := extract(zipPath, destDir); err != nil {

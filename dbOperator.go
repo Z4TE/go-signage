@@ -1301,9 +1301,6 @@ func atoi(s string) int {
 
 func initStaticDb(dbFile string) {
 
-	// 既存のdbを削除
-	os.Remove(dbFile)
-
 	db, err := setupDb(dbFile)
 	if err != nil {
 		log.Fatalf("データベース接続に失敗: %v", err)
@@ -1314,6 +1311,8 @@ func initStaticDb(dbFile string) {
 	if err != nil {
 		log.Fatalf("routesテーブルの作成に失敗: %v", err)
 	}
+
+	db.Exec("DROP DATABASE IF EXISTS")
 
 	// calendar_dates.txt の処理
 	calendarDatesFile := "./static/gtfs/calendar_dates.txt"

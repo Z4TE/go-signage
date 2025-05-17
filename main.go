@@ -42,14 +42,13 @@ func main() {
 		fmt.Println("ファイル", dynamicDbFileName, "の状態を確認中にエラーが発生しました:", err)
 	}
 
+	// feedの期限を確認
+	checkFeedEndDate(staticDbFile, updateStatic)
+
 	if config.UID == "" {
 		errorMessage = "API key is empty."
 		errorTitle = "API key error"
 	}
-
-	// gtfs.goから車両情報を取得
-	//vehiclePosData := fetchVehiclePosition()
-	//tripUpdateData := fetchTripUpdate()
 
 	// Bootstrap読み込み
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
@@ -78,6 +77,11 @@ func main() {
 
 	// 設定ページ
 	http.HandleFunc("/settings", submitHandler)
+
+	// 設定ページ
+	http.HandleFunc("/pppppp", func(w http.ResponseWriter, r *http.Request) {
+		renderTemplate(w, "settings", nil)
+	})
 
 	// 設定保存用
 	http.HandleFunc("/save_settings", saveSettings)

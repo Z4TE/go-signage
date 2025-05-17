@@ -2,83 +2,122 @@
 
 {{ define "content" }}
 
-    <div class="text-center">
-        <h1>Settings</h1>
+<div class="text-center">
+  <h1>Settings</h1>
+</div>
+
+<hr>
+
+<div class="text-center py-2">
+  <h2>API configurations</h2>
+</div>
+
+<form id="credentials" class="px-4">
+  <div class="form-row">
+  <div class="row">
+  <div class="col mb-3">
+    <label for="uid" class="form-label">API key</label>
+    <input type="text" class="form-control" id="uid" name="uid">
+  </div>
+
+  <div class="col mb-3">
+    <label for="agency_id" class="form-label">Agency ID</label>
+    <input type="text" class="form-control" id="agency_id" name="agency_id">
+  </div>
+
+  </div id="response">
+    <div class="form-text mb-3">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
+    <button type="submit" class="btn btn-primary">Submit</button>
+  </div>
+</form>
+
+<hr>
+
+<div class="text-center py-2">
+  <h2>Fetch static GTFS data</h2>
+</div>
+
+<form id="downloadForm" class="px-4" action="/dl" method="post">
+  <div class="input-group mb-3">
+    <div class="col mb-3">
+      <div class="form-text mb-3">Download static GTFS data using credential informations specified in config.</div>
+      <button type="submit" class="btn btn-primary">Download</button>
     </div>
+  </div>
+</form>
 
-    <hr>
+<hr>
 
-    <div class="text-center py-2">
-      <h2>API configurations</h2>
-    </div>
+<div id="alertContainer" class="fixed-top m-2" style="z-index: 1050;">
+</div>
 
-    <form id="credentials" class="px-4">
-      <div class="form-row">
-        <div class="row">
-          <div class="col mb-3">
-              <label for="uid" class="form-label">API key</label>
-              <input type="text" class="form-control" id="uid" name="uid">
-          </div>
+<script>
+  const credentialsForm = document.getElementById('credentials');
+  const downloadForm = document.getElementById('downloadForm');
+  const alertContainer = document.getElementById('alertContainer');
 
-          <div class="col mb-3">
-              <label for="agency_id" class="form-label">Agency ID</label>
-              <input type="text" class="form-control" id="agency_id" name="agency_id">
-          </div>
-        </div id="response">
-        <div class="form-text mb-3">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
-        <button type="submit" class="btn btn-primary">Submit</button>
-      </div>
-    </form>
+  function showAlert(message, type) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+    alertDiv.innerHTML = `
+    <div>${message}</div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    alertContainer.appendChild(alertDiv);
+    // Bootstrap の Alert を初期化
+    new bootstrap.Alert(alertDiv);
+   }
 
-    <hr>
+   credentialsForm.addEventListener('submit', async function(event) {
+    event.preventDefault();
+    const formData = new FormData(credentialsForm);
 
-    <div class="text-center py-2">
-      <h2>Fetch static GTFS data</h2>
-    </div>
-
-    <form class="px-4" action="/dl" method="post">
-      <div class="input-group mb-3">
-        <div class="col mb-3">
-          <div class="form-text mb-3">Download static GTFS data using credential informations specified in config.</div>
-          <button type="submit" class="btn btn-primary">Download</button>
-        </div>
-      </div>
-    </form>
-
-    <hr>
-
-    <script>
-      const form = document.getElementById('credentials');
-
-      // フォームの submit イベントをリッスンする
-      form.addEventListener('submit', async function(event) {
-          // デフォルトのフォーム送信（ページ遷移）を停止する
-          event.preventDefault();
-
-          const formData = new FormData(form);
-
-          try {
-              // Fetch API で非同期にフォームデータを送信
-              const response = await fetch('/settings', {
-                  method: 'POST',
-                  body: formData,
-              });
-
-              // HTTPステータスコードが2xx以外の場合はエラーとして処理
-              if (!response.ok) {
-                  // サーバーからのエラーメッセージを取得（あれば）
-                  const errorBody = await response.text();
-                  throw new Error(`HTTP Error! Status: ${response.status}. ${errorBody || response.statusText}`);
-              }
-
-              // サーバーからの応答をJSONとしてパース
-              const data = await response.json();
-
-          } catch (error) {
-              console.error('フォーム送信エラー:', error);
-          }
+    try {
+      const response = await fetch('/settings', {
+        method: 'POST',
+        body: formData,
       });
-    
-    </script>
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        showAlert(`API設定の保存に失敗しました: ${errorBody || response.statusText}`, 'danger');
+        return;
+      }
+
+      const data = await response.json();
+      showAlert('API設定を保存しました。', 'success');
+
+    } catch (error) {
+      console.error('API設定の送信エラー:', error);
+      showAlert('API設定の送信中にエラーが発生しました。', 'danger');
+    }
+  });
+
+  downloadForm.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    try {
+      const response = await fetch('/dl', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        showAlert(`GTFSデータのダウンロードに失敗しました: ${errorBody || response.statusText}`, 'danger');
+        return;
+      }
+
+      // レスポンスを Blob として処理
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.URL.revokeObjectURL(url); // URL オブジェクトを解放
+      showAlert('GTFSデータのダウンロードを開始しました。', 'success');
+
+    } catch (error) {
+      console.error('GTFSデータのダウンロードエラー:', error);
+      showAlert('GTFSデータのダウンロード中にエラーが発生しました。', 'danger');
+    }
+  });
+</script>
 
 {{ end }}
