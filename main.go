@@ -7,7 +7,12 @@ import (
 	"path/filepath"
 )
 
+// 設定ファイル
 const configPath string = "settings.json"
+
+// 作成するDBのリスト
+const staticDbFile string = "static.sql"
+const dynamicDbFile string = "dynamic.sql"
 
 func main() {
 	config, configErr := readOrCreateConfig(configPath)
@@ -17,10 +22,6 @@ func main() {
 
 	var port string = "8888"
 	var errorMessage, errorTitle string
-
-	// 作成するDBのリスト
-	staticDbFile := "static.sql"
-	dynamicDbFile := "dynamic.sql"
 
 	// DBが存在しなければ初期化
 	staticDbFileName := filepath.Join("./databases", staticDbFile)
@@ -76,15 +77,15 @@ func main() {
 	})
 
 	// 設定ページ
-	http.HandleFunc("/settings", submitHandler)
-
-	// 設定ページ
-	http.HandleFunc("/pppppp", func(w http.ResponseWriter, r *http.Request) {
+	http.HandleFunc("/settings", func(w http.ResponseWriter, r *http.Request) {
 		renderTemplate(w, "settings", nil)
 	})
 
 	// 設定保存用
-	http.HandleFunc("/save_settings", saveSettings)
+	http.HandleFunc("/save_settings", submitHandler)
+
+	// DB更新用
+	http.HandleFunc("/update", updateHandler)
 
 	// ヘルプページ
 	http.HandleFunc("/help", func(w http.ResponseWriter, r *http.Request) {

@@ -65,6 +65,14 @@ func submitHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Printf("受信データ: UID=%s, Agency_ID=%s\n", uid, agencyID)
 
 	writeConfig("settings.json", &formData)
+}
 
-	renderTemplate(w, "settings", nil)
+func updateHandler(w http.ResponseWriter, r *http.Request) {
+
+	if r.Method != http.MethodPost {
+		http.Error(w, "Invalid request method", http.StatusMethodNotAllowed)
+		return
+	}
+
+	checkFeedEndDate(staticDbFile, updateStatic)
 }

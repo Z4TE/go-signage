@@ -9,7 +9,7 @@
 <hr>
 
 <div class="text-center py-2">
-  <h2>API configurations</h2>
+  <h2>認証情報</h2>
 </div>
 
 <form id="credentials" class="px-4">
@@ -26,27 +26,60 @@
   </div>
 
   </div id="response">
-    <div class="form-text mb-3">Do NOT share your API key! Unauthorized access can lead to security vulnerabilities.</div>
-    <button type="submit" class="btn btn-primary">Submit</button>
+    <div class="form-text mb-3">API keyを他人と共有しないでください!</div>
+    <button type="submit" class="btn btn-primary">送信</button>
   </div>
 </form>
 
 <hr>
 
 <div class="text-center py-2">
-  <h2>Fetch static GTFS data</h2>
+  <h2>静的ファイルのダウンロード</h2>
 </div>
 
 <form id="downloadForm" class="px-4" action="/dl" method="post">
   <div class="input-group mb-3">
     <div class="col mb-3">
-      <div class="form-text mb-3">Download static GTFS data using credential informations specified in config.</div>
-      <button type="submit" class="btn btn-primary">Download</button>
+      <div class="form-text mb-3">登録された認証情報を使用して、web上から静的GTFSデータをダウンロードします。</div>
+      <button type="submit" class="btn btn-primary">実行</button>
     </div>
   </div>
 </form>
 
 <hr>
+
+<div class="text-center py-2">
+  <h2>データベースの更新</h2>
+</div>
+
+<form class="px-4" action="#">
+  <div class="input-group mb-3">
+    <div class="col mb-3">
+      <div class="form-text mb-3">全データベースを初期化・更新します。</div>
+      <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#updateModal">実行</button>
+    </div>
+  </div>
+</form>
+
+<div class="modal fade" id="updateModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="updateModalLabel" aria-hidden="true">
+  <div class="modal-dialog">
+    <div class="modal-content border border-warning">
+      <div class="modal-header">
+        <h1 class="modal-title fs-5" id="updateModalLabel">確認</h1>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body">
+        この処理には15~30分程度かかる場合があります。続行しますか?
+      </div>
+      <div class="modal-footer">
+        <form id="updateForm">
+          <button type="submit" class="btn btn-primary" data-bs-dismiss="modal">続行</button>
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div id="alertContainer" class="fixed-top m-2" style="z-index: 1050;">
 </div>
@@ -55,6 +88,9 @@
   const credentialsForm = document.getElementById('credentials');
   const downloadForm = document.getElementById('downloadForm');
   const alertContainer = document.getElementById('alertContainer');
+  const updateForm = document.getElementById('updateForm');
+  const updateModal = document.getElementById('updateModal');
+  const understoodButton = updateModal.querySelector('.modal-footer .btn-primary');
 
   function showAlert(message, type) {
     const alertDiv = document.createElement('div');
@@ -68,12 +104,12 @@
     new bootstrap.Alert(alertDiv);
    }
 
-   credentialsForm.addEventListener('submit', async function(event) {
+  credentialsForm.addEventListener('submit', async function(event) {
     event.preventDefault();
     const formData = new FormData(credentialsForm);
 
     try {
-      const response = await fetch('/settings', {
+      const response = await fetch('/save_settings', {
         method: 'POST',
         body: formData,
       });
@@ -116,6 +152,32 @@
     } catch (error) {
       console.error('GTFSデータのダウンロードエラー:', error);
       showAlert('GTFSデータのダウンロード中にエラーが発生しました。', 'danger');
+    }
+  });
+
+  updateModal.addEventListener('submit', async function(event) {
+    event.preventDefault();
+
+    try {
+      const response = await fetch('/update', {
+        method: 'POST',
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        showAlert(`データベースの更新に失敗しました: ${errorBody || response.statusText}`, 'danger');
+        return;
+      }
+
+      // レスポンスを Blob として処理
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      window.URL.revokeObjectURL(url); // URL オブジェクトを解放
+      showAlert('データベースの更新を開始しました。', 'success');
+
+    } catch (error) {
+      console.error('データベース更新エラー:', error);
+      showAlert('データベース更新中にエラーが発生しました。', 'danger');
     }
   });
 </script>
