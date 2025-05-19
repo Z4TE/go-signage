@@ -95,10 +95,13 @@ func main() {
 	// ダウンローダ
 	http.HandleFunc("/dl", downloadHandler)
 
+	// websocket
+	http.HandleFunc("/ws", handleConnections)
+
 	go broadcastTimetable()
 	go handleBroadcasts()
 
-	// 時刻表(リアルタイム)
+	// 時刻表
 	http.HandleFunc("/time-table", timetableHandler)
 
 	fmt.Printf("Listening on localhost:%s...\n", port)

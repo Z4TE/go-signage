@@ -2,7 +2,7 @@
 
 {{ define "content" }}
 
-    <body>
+    <body  style="overflow-y: auto;">
 
     <div class="container d-flex text-center">
         <div class="row w-100">
@@ -19,25 +19,19 @@
     <table class="table table-striped fs-1 text-center" id="timetable">
         <thead>
             <tr>
-                <th scope="col" style="width: 25%">備考</th>
-                <th scope="col" style="width: 25%">路線名</th>
                 <th scope="col" style="width: 25%">出発時刻</th>
+                <th scope="col" style="width: 50%">路線名</th>
                 <th scope="col" style="width: 25%">行先</th>
             </tr>
         </thead>
         <tbody class="table-group-divider" id="timetable-body">
             {{ range . }}
             <tr>
-                <td>{{ .Remark }}</td>
-                <td>{{ .RouteID }}</td>
                 <td class="departure-time">{{ .DepartureTime }}</td>
+                <td>{{ .RouteID }}</td>
                 <td>{{ .Destination }}</td>
             </tr>
             {{ end }}
-
-            <div class="text-center text-danger">
-                <p>バックエンド未連携</p>
-            </div>
 
         </tbody>
     </table>
@@ -45,25 +39,21 @@
 
     <script>
         const timetableBody = document.getElementById('timetable-body');
-        const ws = new WebSocket('ws://localhost:8888/time-table');
-
-        ws.onmessage = (event) => {
-            const timetableData = JSON.parse(event.data);
-            renderTimetable(timetableData);
-        };
+        const ws = new WebSocket('ws://localhost:8888/ws');
 
         function renderTimetable(data) {
             timetableBody.innerHTML = '';
 
             data.forEach((item, index) => {
                 const row = timetableBody.insertRow();
-                const remarkCell = row.insertCell();
-                const routeIDCell = row.insertCell();
+                // const remarkCell = row.insertCell();
                 const departureTimeCell = row.insertCell();
-                const delayCell = row.insertCell(); // 空にしておく（非表示にするため）
+                const routeIDCell = row.insertCell();
+                // const delayCell = row.insertCell();
                 const destinationCell = row.insertCell();
 
-                remarkCell.textContent = item.Remark;
+                // remarkCell.textContent = item.Remark;
+                departureTimeCell.textContent = item.DepartureTime;
                 routeIDCell.textContent = item.RouteID;
                 destinationCell.textContent = item.Destination;
 
@@ -75,13 +65,27 @@
                     setInterval(() => {
                         departureTimeCell.textContent = showingDeparture ? item.Delay : item.DepartureTime;
                         showingDeparture = !showingDeparture;
-                    }, 5000); // 5秒おきに切り替え
+                    }, 3000); // 3秒おきに切り替え
                 } else {
                     // 遅延なし：そのまま出発時刻を表示
                     departureTimeCell.textContent = item.DepartureTime;
                 }
             });
         }
+
+      
+
+        ws.onmessage = (event) => {
+            console.log('Received raw data:', event.data); // 受信した生データを出力
+            try {
+                const timetableData = JSON.parse(event.data);
+                console.log('Parsed data:', timetableData); // パース後のデータを出力
+                renderTimetable(timetableData);
+                console.log('First item:', timetableData[0]);
+            } catch (error) {
+                console.error('Error parsing JSON:', error);
+            }
+        };
 
         ws.onopen = () => {
             console.log('WebSocket connection opened');
