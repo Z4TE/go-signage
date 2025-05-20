@@ -59,9 +59,10 @@ func getTimetable() []TimeTable {
 
 		routeID := vpEntity.Vehicle.Trip.RouteID
 		tripID := vpEntity.Vehicle.Trip.TripID
-		stopID := removeLastDash(vpEntity.Vehicle.StopID)
+		stopID := removeLastSymbol("-", vpEntity.Vehicle.StopID)
+		stopSeq := vpEntity.Vehicle.CurrentStopSequence
 
-		// fmt.Printf("%s, %s\n", tripID, stopID)
+		// fmt.Printf("%s, %s, %d\n", tripID, stopID, stopSeq)
 
 		// routeID をキーとして tripUpdateData から関連する情報を探す
 		for _, tuEntity := range tripUpdateData.Entity {
@@ -71,30 +72,41 @@ func getTimetable() []TimeTable {
 					stopTimeUpdates := tuEntity.TripUpdate.StopTimeUpdate
 					if len(stopTimeUpdates) > 0 {
 						latestUpdate := stopTimeUpdates[len(stopTimeUpdates)-1]
+
 						// latestUpdate を使って処理を行う
 						delay := ""
 						if latestUpdate.Departure.Delay > 60 {
-							delay = fmt.Sprintf("%d", latestUpdate.Departure.Delay)
+							delay = fmt.Sprintf("%d", latestUpdate.Departure.Delay/60)
 						}
 
 						// 路線名を問い合わせ
-						routeNameQuery := "SELECT route_long_name FROM routes r WHERE r.route_id = ?"
+						routeNameQuery := "SELECT route_long_name FROM routes r WHERE r.route_id = ? LIMIT 1"
 						routeName, err := QuerySingleString(db, routeNameQuery, routeID)
 						if err != nil {
+							fmt.Printf("poop1\n")
 							log.Fatal(err)
 						}
 
 						// 行先を問い合わせ
-						destinationQuery := "SELECT stop_headsign FROM stop_times st WHERE st.trip_id = ? and st.stop_id = ?"
-						destinationName, err := QuerySingleString(db, destinationQuery, tripID, stopID)
+						destinationQuery := "SELECT stop_headsign FROM stop_times st WHERE st.trip_id = ? AND st.stop_id = ?  AND st.stop_sequence = ? LIMIT 1"
+						destinationName, err := QuerySingleString(db, destinationQuery, tripID, stopID, stopSeq)
 						if err != nil {
+							fmt.Printf("poop2\n")
+							log.Fatal(err)
+						}
+
+						// 出発時刻を問い合わせ
+						departureTimeQuery := "SELECT departure_time FROM stop_times st WHERE st.trip_id = ? AND st.stop_id = ? AND st.stop_sequence = ? LIMIT 1"
+						departureTime, err := QuerySingleString(db, departureTimeQuery, tripID, stopID, stopSeq)
+						if err != nil {
+							fmt.Printf("poop3\n")
 							log.Fatal(err)
 						}
 
 						timeTables = append(timeTables, TimeTable{
 							RouteID:       routeName,
 							Delay:         delay,
-							DepartureTime: "aaa",
+							DepartureTime: removeLastSymbol(":", departureTime),
 							Destination:   destinationName,
 						})
 
@@ -137,7 +149,7 @@ func handleConnections(w http.ResponseWriter, r *http.Request) {
 }
 
 func broadcastTimetable() {
-	ticker := time.NewTicker(1 * time.Minute) // 1分間隔で運行情報を送信
+	ticker := time.NewTicker(30 * time.Second) // 1分間隔で運行情報を送信
 	defer ticker.Stop()
 
 	for range ticker.C {
@@ -173,7 +185,7 @@ func handleBroadcasts() {
 
 func timetableHandler(w http.ResponseWriter, r *http.Request) {
 
-	timeTable := getTimetable()
+	// timeTable := getTimetable()
 
-	renderTemplate(w, "time-table", timeTable)
+	renderTemplate(w, "time-table", nil)
 }

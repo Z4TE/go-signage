@@ -95,11 +95,11 @@ func main() {
 	// ダウンローダ
 	http.HandleFunc("/dl", downloadHandler)
 
-	// websocket
-	http.HandleFunc("/ws", handleConnections)
-
 	go broadcastTimetable()
 	go handleBroadcasts()
+
+	// websocket
+	http.HandleFunc("/ws", handleConnections)
 
 	// 時刻表
 	http.HandleFunc("/time-table", timetableHandler)

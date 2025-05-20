@@ -98,18 +98,18 @@ func ExecuteNonQuery(db *sql.DB, query string, args ...interface{}) (sql.Result,
 	return result, nil
 }
 
-// 2つ以上-を含む文字列から、最後の-以降を削除する。
-func removeLastDash(s string) string {
-	lastIndex := strings.LastIndex(s, "-")
+// -を含む文字列から、最後の-以降を削除する。
+func removeLastSymbol(symbol string, s string) string {
+	lastIndex := strings.LastIndex(s, symbol)
 	if lastIndex == -1 {
 		return s // ハイフンがない場合はそのまま返す
 	}
 
 	// 最後のハイフンより前のハイフンの数を数える
-	hyphenCount := strings.Count(s[:lastIndex], "-")
+	symbolCount := strings.Count(s[:lastIndex], symbol)
 
-	if hyphenCount < 1 {
-		return s // ハイフンが1つ以下の場合もそのまま返す
+	if symbolCount < 1 {
+		return s
 	}
 
 	return s[:lastIndex]

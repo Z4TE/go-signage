@@ -19,19 +19,13 @@
     <table class="table table-striped fs-1 text-center" id="timetable">
         <thead>
             <tr>
-                <th scope="col" style="width: 25%">出発時刻</th>
+                <th scope="col" style="width: 20%">出発時刻</th>
                 <th scope="col" style="width: 50%">路線名</th>
-                <th scope="col" style="width: 25%">行先</th>
+                <th scope="col" style="width: 30%">行先</th>
             </tr>
         </thead>
         <tbody class="table-group-divider" id="timetable-body">
-            {{ range . }}
-            <tr>
-                <td class="departure-time">{{ .DepartureTime }}</td>
-                <td>{{ .RouteID }}</td>
-                <td>{{ .Destination }}</td>
-            </tr>
-            {{ end }}
+
 
         </tbody>
     </table>
@@ -53,22 +47,21 @@
                 const destinationCell = row.insertCell();
 
                 // remarkCell.textContent = item.Remark;
-                departureTimeCell.textContent = item.DepartureTime;
-                routeIDCell.textContent = item.RouteID;
-                destinationCell.textContent = item.Destination;
+                departureTimeCell.textContent = item.departure_time;
+                routeIDCell.textContent = item.route_id;
+                destinationCell.textContent = item.destination;
 
-                if (item.Delay && item.Delay.trim() !== '') {
-                    // 遅延がある場合は交互に表示
+                // 遅延情報と出発時刻を交互に表示
+                if (item.delay && item.delay.trim() !== '') {
                     let showingDeparture = true;
-                    departureTimeCell.textContent = item.DepartureTime;
+                    departureTimeCell.textContent = item.departure_time;
 
                     setInterval(() => {
-                        departureTimeCell.textContent = showingDeparture ? item.Delay : item.DepartureTime;
+                        departureTimeCell.textContent = showingDeparture ? item.delay : item.departure_time;
                         showingDeparture = !showingDeparture;
-                    }, 3000); // 3秒おきに切り替え
+                    }, 3000);
                 } else {
-                    // 遅延なし：そのまま出発時刻を表示
-                    departureTimeCell.textContent = item.DepartureTime;
+                    departureTimeCell.textContent = item.departure_time;
                 }
             });
         }
