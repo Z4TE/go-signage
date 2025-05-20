@@ -24,23 +24,23 @@ func main() {
 	var errorMessage, errorTitle string
 
 	// DBが存在しなければ初期化
-	staticDbFileName := filepath.Join("./databases", staticDbFile)
-	dynamicDbFileName := filepath.Join("./databases", dynamicDbFile)
+	staticDbFilePath := filepath.Join("./databases", staticDbFile)
+	dynamicDbFilePath := filepath.Join("./databases", dynamicDbFile)
 
-	if _, err := os.Stat(staticDbFileName); os.IsNotExist(err) {
+	if _, err := os.Stat(staticDbFilePath); os.IsNotExist(err) {
 		initStaticDb(staticDbFile)
 	} else if err == nil {
-		fmt.Println(staticDbFileName, "は存在します。")
+		fmt.Println(staticDbFilePath, "は存在します。")
 	} else {
-		fmt.Println("ファイル", staticDbFileName, "の状態を確認中にエラーが発生しました:", err)
+		fmt.Println("ファイル", staticDbFilePath, "の状態を確認中にエラーが発生しました:", err)
 	}
 
-	if _, err := os.Stat(dynamicDbFileName); os.IsNotExist(err) {
+	if _, err := os.Stat(dynamicDbFilePath); os.IsNotExist(err) {
 		initDynamicDb(dynamicDbFile)
 	} else if err == nil {
-		fmt.Println(dynamicDbFileName, "は存在します。")
+		fmt.Println(dynamicDbFilePath, "は存在します。")
 	} else {
-		fmt.Println("ファイル", dynamicDbFileName, "の状態を確認中にエラーが発生しました:", err)
+		fmt.Println("ファイル", dynamicDbFilePath, "の状態を確認中にエラーが発生しました:", err)
 	}
 
 	// feedの期限を確認

@@ -12,8 +12,9 @@ import (
 )
 
 type Config struct {
-	UID      string `json:"uid"`
-	AgencyID string `json:"agencyID"`
+	UID      string `json:"uid,omitempty"`
+	AgencyID string `json:"agencyID,omitempty"`
+	Target   string `json:"target,omitempty"`
 }
 
 func readConfig(path string) (*Config, error) {

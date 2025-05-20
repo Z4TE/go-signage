@@ -37,18 +37,29 @@ func getTimetable() []TimeTable {
 	timeTables := make([]TimeTable, 0)
 
 	// マスタDBに接続
-	db, err := setupDb(staticDbFile)
+	staticDb, err := setupDb(staticDbFile)
 	if err != nil {
 		log.Fatalf("データベース接続に失敗: %v", err)
 	}
-	defer db.Close()
+	defer staticDb.Close()
+
+	// トランザクションDBに接続
+	dynamicDb, err := setupDb(dynamicDbFile)
+	if err != nil {
+		log.Fatalf("データベース接続に失敗: %v", err)
+	}
+	defer dynamicDb.Close()
+
+	// マスタDBにトランザクションDBを接続
+	staticDb.Exec("ATTACH DATABASE './databases/dynamic.sql' AS d;")
 
 	vehiclePosData := fetchVehiclePosition()
 	tripUpdateData := fetchTripUpdate()
 
+	ExecuteNonQuery(dynamicDb, "DELETE stop_time_update")
+
 	// DBを更新
-	// insertVehiclePositionResponse(db, vehiclePosData)
-	// insertTripUpdateResponse(db, tripUpdateData)
+	insertTripUpdateResponse(staticDb, tripUpdateData)
 
 	// vehiclePosData と tripUpdateData を組み合わせて TimeTable を作成
 	count := 0
@@ -57,62 +68,108 @@ func getTimetable() []TimeTable {
 			break
 		}
 
-		routeID := vpEntity.Vehicle.Trip.RouteID
+		// routeID := vpEntity.Vehicle.Trip.RouteID
 		tripID := vpEntity.Vehicle.Trip.TripID
-		stopID := removeLastSymbol("-", vpEntity.Vehicle.StopID)
-		stopSeq := vpEntity.Vehicle.CurrentStopSequence
+		// stopID := removeLastSymbol("-", vpEntity.Vehicle.StopID)
+		// stopSeq := vpEntity.Vehicle.CurrentStopSequence
 
-		// fmt.Printf("%s, %s, %d\n", tripID, stopID, stopSeq)
+		// 停留所名から表示する項目を検索
+		stopName := "福島駅東口" // あとで変数化する
+		// ばかでかいクエリ trip_update_entity_idの最新版を抽出しようとしたらこうなった
+		// 有識者による修正求む
+		staticDataQuery := `
+			WITH ParsedTripUpdate AS (
+				SELECT
+					st.departure_time,
+					st.stop_headsign,
+					r.route_long_name,
+					stu.departure_delay,
+					st.stop_sequence,
+					stu.trip_update_entity_id,
+					CAST(
+						SUBSTR(
+							SUBSTR(
+								stu.trip_update_entity_id,
+								INSTR(stu.trip_update_entity_id, '-') + 1
+							),
+							INSTR(
+								SUBSTR(
+									stu.trip_update_entity_id,
+									INSTR(stu.trip_update_entity_id, '-') + 1
+								),
+								'-'
+							) + 1,
+							INSTR(
+								SUBSTR(
+									SUBSTR(
+										stu.trip_update_entity_id,
+										INSTR(stu.trip_update_entity_id, '-') + 1
+									),
+									INSTR(
+										SUBSTR(
+											stu.trip_update_entity_id,
+											INSTR(stu.trip_update_entity_id, '-') + 1
+										),
+										'-'
+									) + 1
+								),
+								'-'
+							) - 1
+						) AS INTEGER
+					) AS version_number
+				FROM
+					stop_times AS st
+				JOIN
+					stops AS s
+					ON st.stop_id = s.stop_id
+				JOIN
+					trips AS t
+					ON st.trip_id = t.trip_id
+				JOIN
+					routes AS r
+					ON t.route_id = r.route_id
+				JOIN
+					d.stop_time_update AS stu
+					ON stu.stop_id = s.stop_id
+				JOIN
+					d.vehicle_position AS vp
+					ON vp.current_stop_sequence = st.stop_sequence
+				WHERE
+					s.stop_name = ? AND st.trip_id = ?
+			)
+			SELECT DISTINCT
+				departure_time,
+				stop_headsign,
+				route_long_name,
+				departure_delay,
+				stop_sequence,
+				trip_update_entity_id
+			FROM
+				ParsedTripUpdate
+			WHERE
+				version_number = (SELECT MAX(version_number) FROM ParsedTripUpdate)
+			LIMIT 128;
+		`
+		staticData, err := QueryRows(staticDb, staticDataQuery, stopName, tripID)
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		}
 
-		// routeID をキーとして tripUpdateData から関連する情報を探す
-		for _, tuEntity := range tripUpdateData.Entity {
-			if tuEntity.TripUpdate.Trip.RouteID == routeID {
-				if len(tuEntity.TripUpdate.StopTimeUpdate) > 0 {
-					// 最新の更新情報のみを取得
-					stopTimeUpdates := tuEntity.TripUpdate.StopTimeUpdate
-					if len(stopTimeUpdates) > 0 {
-						latestUpdate := stopTimeUpdates[len(stopTimeUpdates)-1]
+		for _, i := range staticData {
 
-						// latestUpdate を使って処理を行う
-						delay := ""
-						if latestUpdate.Departure.Delay > 60 {
-							delay = fmt.Sprintf("%d", latestUpdate.Departure.Delay/60)
-						}
-
-						// 路線名を問い合わせ
-						routeNameQuery := "SELECT route_long_name FROM routes r WHERE r.route_id = ? LIMIT 1"
-						routeName, err := QuerySingleString(db, routeNameQuery, routeID)
-						if err != nil {
-							fmt.Printf("poop1\n")
-							log.Fatal(err)
-						}
-
-						// 行先を問い合わせ
-						destinationQuery := "SELECT stop_headsign FROM stop_times st WHERE st.trip_id = ? AND st.stop_id = ?  AND st.stop_sequence = ? LIMIT 1"
-						destinationName, err := QuerySingleString(db, destinationQuery, tripID, stopID, stopSeq)
-						if err != nil {
-							fmt.Printf("poop2\n")
-							log.Fatal(err)
-						}
-
-						// 出発時刻を問い合わせ
-						departureTimeQuery := "SELECT departure_time FROM stop_times st WHERE st.trip_id = ? AND st.stop_id = ? AND st.stop_sequence = ? LIMIT 1"
-						departureTime, err := QuerySingleString(db, departureTimeQuery, tripID, stopID, stopSeq)
-						if err != nil {
-							fmt.Printf("poop3\n")
-							log.Fatal(err)
-						}
-
-						timeTables = append(timeTables, TimeTable{
-							RouteID:       routeName,
-							Delay:         delay,
-							DepartureTime: removeLastSymbol(":", departureTime),
-							Destination:   destinationName,
-						})
-
-					}
-				}
+			// 遅延が60秒未満の場合は表示しない
+			delay := ""
+			if i["departure_delay"].(int64) > 60 {
+				delay = fmt.Sprintf("遅れ 約%d分", i["departure_delay"].(int64)/60)
 			}
+
+			timeTables = append(timeTables, TimeTable{
+				RouteID:       i["route_long_name"].(string),
+				Delay:         delay,
+				DepartureTime: removeLastSymbol(":", i["departure_time"].(string)),
+				Destination:   i["stop_headsign"].(string),
+			})
+
 		}
 		count++
 	}
