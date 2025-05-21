@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 	"time"
 
@@ -155,7 +157,29 @@ func getTimetable() []TimeTable {
 			fmt.Printf("%v\n", err)
 		}
 
+		currentTime := time.Now()
+
 		for _, i := range staticData {
+			departureTimeStr := i["departure_time"].(string)
+
+			// departure timeの文字列をtime.Timeオブジェクトにパース
+			parts := strings.Split(departureTimeStr, ":")
+			if len(parts) != 3 {
+				fmt.Printf("Invalid departure_time format: %s. Skipping.\n", departureTimeStr)
+				continue
+			}
+
+			hour, _ := strconv.Atoi(parts[0])
+			minute, _ := strconv.Atoi(parts[1])
+			second, _ := strconv.Atoi(parts[2])
+
+			// 現在時刻のtime.Timeオブジェクトを作成
+			departureTime := time.Date(currentTime.Year(), currentTime.Month(), currentTime.Day(), hour, minute, second, 0, currentTime.Location())
+
+			// departure_timeが現在以降の場合のみappend
+			if departureTime.Before(currentTime) {
+				continue
+			}
 
 			// 遅延が60秒未満の場合は表示しない
 			delay := ""
@@ -169,7 +193,6 @@ func getTimetable() []TimeTable {
 				DepartureTime: removeLastSymbol(":", i["departure_time"].(string)),
 				Destination:   i["stop_headsign"].(string),
 			})
-
 		}
 		count++
 	}
